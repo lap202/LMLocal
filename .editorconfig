@@ -1,0 +1,56 @@
+# .editorconfig — basic rules for C# in this repository
+# Visual Studio and Roslyn read this file and apply formatting/diagnostics.
+root = true
+
+[*.{cs,vb}]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+[*.cs]
+# General style rules
+dotnet_sort_system_directives_first = true
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = false:suggestion
+csharp_style_var_elsewhere = false:suggestion
+csharp_new_line_before_open_brace = all
+
+# Using/import formatting and related settings
+dotnet_separate_import_directive_groups = false
+
+# Example rules for Roslyn/CodeAnalysis (take effect if analyzers are installed)
+# You can change severity: none / silent / suggestion / warning / error
+dotnet_analyzer_diagnostic.category-Maintainability.severity = warning
+dotnet_analyzer_diagnostic.category-Reliability.severity = warning
+dotnet_analyzer_diagnostic.category-Performance.severity = warning
+dotnet_analyzer_diagnostic.category-Security.severity = suggestion
+
+
+# Examples of specific diagnostics (enabled when analyzers are present)
+# Keep formatting analyzer disabled here (IDE0055) if you prefer not to have strict formatting warnings
+dotnet_diagnostic.IDE0008.severity = none    # var can be inferred
+dotnet_diagnostic.IDE0055.severity = none       # formatting
+dotnet_diagnostic.CA1822.severity = none     # member can be static
+
+# Naming conventions
+# 1) Private fields should be prefixed with underscore and use camelCase
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.symbols = private_fields
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.style = underscore_prefix
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.severity = warning
+
+# 2) Parameters should be camelCase (start with lowercase)
+dotnet_naming_symbols.parameters.applicable_kinds = parameter
+
+dotnet_naming_style.camel_case.capitalization = camel_case
+
+dotnet_naming_rule.parameters_should_be_camel_case.symbols = parameters
+dotnet_naming_rule.parameters_should_be_camel_case.style = camel_case
+dotnet_naming_rule.parameters_should_be_camel_case.severity = warning
+
+# If you want to relax additional rules, change severities above to 'none' or 'suggestion'.
+# Place this file at repository root so Visual Studio and analyzers pick it up
