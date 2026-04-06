@@ -31,8 +31,8 @@ namespace LMLocal.Internal
             // Safe navigation through JSON to get the delta content
             if (!(json["choices"] is JArray choices) || choices.Count == 0)
                 return null;
-
             var delta = choices[0]?["delta"]?["content"]?.ToString();
+            //TODO: add separatly reasoning_content
 
             if (!string.IsNullOrEmpty(delta) && json["usage"] == null)
             {

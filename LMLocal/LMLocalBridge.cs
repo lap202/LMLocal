@@ -108,16 +108,14 @@ namespace LMLocalBridgeNamespace
                     prompt,
                     onChunk: async (delta, stats) =>
                     {
-                        string escaped = delta.Replace("'", "\\'");
                         await _scriptExecutor.PostMessageAsJsonAsync(
-                            new WebView2ScriptMessageWithCount() { Type = WebView2MessageType.ChatChunk, Payload = escaped, Count = stats.TotalTokens, TokensPerSecond = stats.TokensPerSecond }
+                            new WebView2ScriptMessageWithCount() { Type = WebView2MessageType.ChatChunk, Payload = delta, Count = stats.TotalTokens, TokensPerSecond = stats.TokensPerSecond }
                         );
                     },
                     onError: async (error) =>
                     {
-                        string escaped = error.Replace("'", "\\'");
                         await _scriptExecutor.PostMessageAsJsonAsync(
-                            new WebView2ScriptMessage() { Type = WebView2MessageType.Error, Payload = escaped }
+                            new WebView2ScriptMessage() { Type = WebView2MessageType.Error, Payload = error }
                         );
                     }
                 ).ConfigureAwait(false);

@@ -40,12 +40,14 @@ const UIText = {
     COPY_ERROR: 'Error!',
     SHOW_MORE: 'Show more',
     SHOW_LESS: 'Show less',
-    CONFIRM_CLEAR_CONVERSATION: 'Are you sure you want to clear the conversation?'
+    CONFIRM_CLEAR_CONVERSATION: 'Are you sure you want to clear the conversation?',
+    TEXT_TOKENS: 'tokens',
+    TEXT_TOKENS_PER_SECOND: 't/s'
 };
 
 const CONFIG = {
     MAX_DISPLAYED_MESSAGES: 200,
-    RENDER_THROTTLE_MS: 60,
+    RENDER_THROTTLE_MS: 30,
     USER_MSG_COLLAPSE_THRESHOLD: 500,
     USER_MSG_LINES_COLLAPSE_THRESHOLD: 8,
     MAX_TOKENS: 16384,
@@ -130,13 +132,15 @@ const UIManager = (() => {
         } else if (status === AppStatus.OFFLINE) {
             connText = UIText.STATUS_OFFLINE;
             connClass = 'status-label offline';
-        } else if (status === AppStatus.IDLE ||
-            status === AppStatus.PROCESSING ||
-            status === AppStatus.STREAMING ||
-            status === AppStatus.FINISHING ||
-            status === AppStatus.COMPACTING ||
-            status === AppStatus.STOPPING ||
-            status === AppStatus.ERROR) {
+        } else if ([
+                    AppStatus.IDLE,
+                    AppStatus.PROCESSING,
+                    AppStatus.STREAMING,
+                    AppStatus.FINISHING,
+                    AppStatus.COMPACTING,
+                    AppStatus.STOPPING,
+                    AppStatus.ERROR
+                ].includes(status)) {
             connText = UIText.STATUS_ONLINE;
             connClass = 'status-label online';
         } else {
@@ -189,7 +193,7 @@ const UIManager = (() => {
         el.mainBtn.className = `main-btn ${(isGenerating || isStopping) ? 'btn-stop' : ''}`;
 
         if (state.status === AppStatus.ERROR) {
-            el.statusText.innerText = state.error || "Error";
+            el.statusText.innerText = state.error || UIText.STATUS_ERROR;
             el.statusText.classList.add('error');
         } else if (state.status === AppStatus.OFFLINE && state.error) {
             el.statusText.innerText = state.error;
@@ -306,11 +310,11 @@ const UIManager = (() => {
         }
 
         if (el.tokenCountText) {
-            el.tokenCountText.innerText = `${used} tokens`;
+            el.tokenCountText.innerText = `${used} ${UIText.TEXT_TOKENS}`;
         }
 
         if (el.tokensSpeed) {
-            el.tokensSpeed.innerText = speed > 0 ? `(${speed.toFixed(1)} t/s)` : "";
+            el.tokensSpeed.innerText = speed > 0 ? `(${speed.toFixed(1)} ${UIText.TEXT_TOKENS_PER_SECOND})` : "";
         }
         
     }
@@ -619,7 +623,6 @@ window.onload = () => {
     if (webview) {
         webview.addEventListener('message', event => {
             const { Type, Payload, Count, TokensPerSecond } = event.data;
-
             switch (Type) {
                 case 'ChatChunk':
                     AppManager.handleStreamChunk(Payload, Count, TokensPerSecond);
