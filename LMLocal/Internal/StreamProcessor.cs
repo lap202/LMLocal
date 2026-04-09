@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 
 namespace LMLocal.Internal
 {
@@ -94,6 +93,8 @@ namespace LMLocal.Internal
                 catch (OperationCanceledException) { }
                 catch (Exception ex)
                 {
+                    // Do not forward cancellation as an error — treat cancellation as normal termination.
+                    if (ex is OperationCanceledException) return;
                     if (_onError != null)
                         await _onError(ex.Message).ConfigureAwait(false);
                 }
@@ -139,6 +140,8 @@ namespace LMLocal.Internal
                         }
                         catch (Exception ex)
                         {
+                            // If it's cancellation propagate so outer handlers can treat it normally
+                            if (ex is OperationCanceledException) throw;
                             if (_onError != null)
                                 await _onError(ex.Message).ConfigureAwait(false);
                         }
@@ -155,6 +158,8 @@ namespace LMLocal.Internal
                 }
                 catch (Exception ex)
                 {
+                    // Do not forward cancellation as an error — treat it as normal termination.
+                    if (ex is OperationCanceledException) throw;
                     if (_onError != null)
                         await _onError(ex.Message).ConfigureAwait(false);
                 }

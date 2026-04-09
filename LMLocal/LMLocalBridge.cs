@@ -1,13 +1,14 @@
-using LMLocal.Internal;
-using Microsoft.VisualStudio.Shell;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using LMLocal.Internal;
+using Microsoft.VisualStudio.Shell;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace LMLocalBridgeNamespace
 {
@@ -50,7 +51,7 @@ namespace LMLocalBridgeNamespace
         /// </summary>
         public async Task<string> GetStatusAsync()
         {
-            var result = new ConnectionResponse();
+            var result = new GetStatusReponse();
             try
             {
                 using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
@@ -78,7 +79,18 @@ namespace LMLocalBridgeNamespace
 
                     var instance = loadedLlm["loaded_instances"][0];
 
+                    var capabilities = loadedLlm["capabilities"];
+                    if (capabilities != null)
+                    {
+                        if (capabilities["reasoning"] is JObject reasoningToken)
+                        {
+                            if (result.Reasoning == null) result.Reasoning = new GetStatusReponse.ReasoningInfo();
+                            result.Reasoning.Default = reasoningToken.Value<string>("default");
+                            result.Reasoning.AllowedOptions = reasoningToken["allowed_options"]?.Values<string>()?.ToList() ?? new List<string>();
+                        }
+                    }
                     result.Status = "SUCCESS";
+
                     result.ModelName = loadedLlm["display_name"]?.ToString() ?? loadedLlm["key"]?.ToString();
 
                     result.MaxContext = instance["config"]?["context_length"]?.Value<int>()

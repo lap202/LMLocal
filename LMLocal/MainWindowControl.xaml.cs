@@ -20,7 +20,7 @@ namespace LMLocal
         private static readonly SemaphoreSlim _envLock = new SemaphoreSlim(1, 1);
 
         private const string WebViewUserDataFolder = "LMLocalChat/WebViewData";
-        private const string HtmlResourcePath = "Resources/main-window.html";
+        private const string HtmlResourcePath = "Resources/app.html";
         private bool _disposed;
         private bool _webViewInitialized;
         private bool _webViewInitializing;
@@ -69,7 +69,7 @@ namespace LMLocal
                 chatBrowser.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     "app.local",
                     resourcesPath,
-                    CoreWebView2HostResourceAccessKind.DenyCors
+                    CoreWebView2HostResourceAccessKind.Allow
                 );
 
                 // Register the bridge object as "chrome.webview.hostObjects.bridge"

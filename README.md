@@ -62,10 +62,17 @@ Make sure LM Studio is running and a model is loaded.
 
 Make sure the selected model in LM Studio supports chat completions and is fully loaded.
 
+### Webview host unreachable
+
+Ensure that the local server in LM Studio is running and accessible.
+
+### Missing dependencies
+
+Check that the required libraries `marked`, `streaming-markdown` and `highlight.js` are included in your project. Errors during streaming may indicate missing components.
+
 ## License
 
 This project is licensed under the MIT License. See `LICENSE.txt` for details.
-
 
 ## Acknowledgments
 
@@ -75,5 +82,8 @@ Special thanks to the developers of LM Studio for providing the foundation for t
 
 This extension uses the following third-party client-side libraries:
 
-- `marked` v15.0.12  Markdown parser
-- `highlight.js` v11.9.0 and GitHub Dark theme (`github-dark.min.css`)  syntax highlighting library
+- `marked` v15.0.12  Markdown parser (MIT)
+- `highlight.js` v11.9.0 and GitHub Dark theme (`github-dark.min.css`)  syntax highlighting library (MIT)
+- `streaming-markdown` 0.2.15 Streaming Markdown (MIT)
+
+

@@ -1,5 +1,3 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +6,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 
 namespace LMLocal.Internal
 {
@@ -156,12 +157,18 @@ namespace LMLocal.Internal
         }
     }
 
-    public class ConnectionResponse
+    public class GetStatusReponse
     {
         public string Status { get; set; }
         public string ModelName { get; set; }
         public int MaxContext { get; set; }
         public string ErrorMessage { get; set; }
+        public ReasoningInfo Reasoning { get; set; }
+        public class ReasoningInfo
+        {
+            public List<string> AllowedOptions { get; set; }
+            public string Default { get; set; }
+        }
     }
 
     /// <summary>

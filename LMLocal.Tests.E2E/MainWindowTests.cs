@@ -2,7 +2,7 @@ namespace LMLocal.Tests.E2E;
 using System.Text.RegularExpressions;
 
 /// <summary>
-/// E2E tests for main-window.html with AppStore/AppManager architecture.
+/// E2E tests for app.html with AppStore/AppManager architecture.
 /// Tests connection states, chat flow, streaming, markdown rendering, and error handling.
 /// </summary>
 [TestFixture]
@@ -28,7 +28,7 @@ public partial class MainWindowTests : PageTest
     private static string ReadMock(string fileName) =>
         File.ReadAllText(Path.GetFullPath($"TestAssets/{fileName}"));
 
-    private const string TestPageUrl = "https://app.local/test-main-window.html";
+    private const string TestPageUrl = "https://app.local/test-app.html";
 
     public override BrowserNewContextOptions ContextOptions() => new() { BypassCSP = true };
 
@@ -41,12 +41,12 @@ public partial class MainWindowTests : PageTest
         {
             var urlPath = new Uri(route.Request.Url).AbsolutePath.TrimStart('/');
 
-            if (urlPath == "test-main-window.html")
+            if (urlPath == "test-app.html")
             {
-                var testHtmlPath = Path.Combine(assetsDir, "test-main-window.html");
+                var testHtmlPath = Path.Combine(assetsDir, "test-app.html");
                 if (!File.Exists(testHtmlPath))
                 {
-                    testHtmlPath = Path.GetFullPath(@"..\..\..\..\LMLocal\Resources\main-window.html");
+                    testHtmlPath = Path.GetFullPath(@"..\..\..\..\LMLocal\Resources\app.html");
                 }
                 await route.FulfillAsync(new() { Path = testHtmlPath });
                 return;

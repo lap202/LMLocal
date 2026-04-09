@@ -28,14 +28,14 @@
     <Content Include="TestAssets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <!-- Copy JS libraries and main-window.js from the main project -->
+    <!-- Copy JS libraries and app.js from the main project -->
     <Content Include="..\LMLocal\Resources\js\*.js">
       <Link>TestAssets\%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <!-- Auto-sync main-window.html from the main project as the test page -->
-    <Content Include="..\LMLocal\Resources\main-window.html">
-      <Link>TestAssets\test-main-window.html</Link>
+    <!-- Auto-sync app.html from the main project as the test page -->
+    <Content Include="..\LMLocal\Resources\app.html">
+      <Link>TestAssets\test-app.html</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -1,6 +1,6 @@
 ﻿# LMLocal.Tests.E2E
 
-E2E tests for `main-window.html` using [Playwright](https://playwright.dev/dotnet/) + MSTest.
+E2E tests for `app.html` using [Playwright](https://playwright.dev/dotnet/) + MSTest.
 
 ## Requirements
 
@@ -84,26 +84,26 @@ Or add a `.runsettings` file to the project and select it in Visual Studio via
 ```
 LMLocal.Tests.E2E\
 ??? TestAssets\
-?   ??? test-main-window.html     # single test page — mirrors main-window.html (no mock scripts inside)
+?   ??? test-app.html     # single test page — mirrors app.html (no mock scripts inside)
 ?   ??? webview-mock.js           # mock: connected, SUCCESS response
 ?   ??? webview-mock-offline.js   # mock: disconnected, ERROR response
 ?   ??? webview-mock-streaming.js # mock: fires ChatChunk + ChatComplete via postMessage
-??? MainWindowTests.cs            # UI tests for main-window.html
+??? MainWindowTests.cs            # UI tests for app.html
 ??? README.md
 ```
 
 ## How it works
 
-Since `main-window.html` runs inside WebView2 (not a regular browser),
-tests use a single `test-main-window.html` — a copy of the page **without any mock scripts**.
+Since `app.html` runs inside WebView2 (not a regular browser),
+tests use a single `test-app.html` — a copy of the page **without any mock scripts**.
 
 Each test injects the required mock via `Page.AddInitScriptAsync()` before navigation,
 so there is no HTML duplication per scenario.
 
-## Keeping test-main-window.html in sync
+## Keeping test-app.html in sync
 
-`TestAssets/test-main-window.html` is **not stored in the repository**.
-It is automatically copied from `LMLocal/Resources/main-window.html` on every build via `.csproj`
+`TestAssets/test-app.html` is **not stored in the repository**.
+It is automatically copied from `LMLocal/Resources/app.html` on every build via `.csproj`
 into the `bin/` output directory, which is already covered by `.gitignore`.
 No manual sync needed — rebuilding the project is enough.
 
