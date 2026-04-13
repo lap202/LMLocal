@@ -1,23 +1,27 @@
-// Scroll manager: scrolls to bottom when content is near tail (thresholdPx) or when forced; uses requestAnimationFrame to batch DOM updates.
+/**
+ * createScrollManager - utility to manage auto-scrolling behavior for a scrollable container.
+ * Responsibilities:
+ *  - Track whether the container is "stuck" to the bottom (within `thresholdPx`) or if the user has scrolled up.
+ *  - Provide a `scrollToBottom` method that scrolls to the bottom if currently stuck, or if forced.
+ * Notes:
+ *  - Defensive: the implementation cancels pending RAFs on destroy and nulls the internal container reference.
+ *  - The default `thresholdPx` controls how close to the bottom the container must be to be considered "stuck".
+ */
 export const createScrollManager = (container, thresholdPx = 50) => {
-    // State to track if we're "stuck" to the bottom (within threshold) or if user has scrolled up
     let isStuckToBottom = true;
     let scrollScheduled = false;
+    let rafId = null;
 
     const init = () => {
-        // Set initial state based on current scroll position
         const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
         isStuckToBottom = distanceFromBottom <= thresholdPx;
     };
     init();
 
-    // Handle user scrolls: if they scroll up beyond the threshold, we "unstick"; if they scroll back down within the threshold, we "stick" again
     const handleManualScroll = () => {
         if (!container) return;
 
         const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
-
-        // If the user scrolls up beyond the threshold, we "unstick"; if they scroll back down within the threshold, we "stick" again
         isStuckToBottom = distanceFromBottom <= thresholdPx;
     };
 
@@ -26,25 +30,32 @@ export const createScrollManager = (container, thresholdPx = 50) => {
     const scrollToBottom = (force = false) => {
         if (!container) return;
 
-        // Scroll if:
-        // 1. We're forced to (force)
-        // 2. We were "stuck" to the bottom before this function call
+
         if (force || isStuckToBottom) {
             if (scrollScheduled) return;
 
             scrollScheduled = true;
-            requestAnimationFrame(() => {
+            rafId = requestAnimationFrame(() => {
                 container.scrollTop = container.scrollHeight;
                 scrollScheduled = false;
-
-                // After scrolling, we should be "stuck" to the bottom again
                 isStuckToBottom = true;
+                rafId = null;
             });
         }
     };
 
     return {
         scrollToBottom,
-        destroy: () => container.removeEventListener('scroll', handleManualScroll)
+        destroy: () => {
+            if (rafId != null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+                scrollScheduled = false;
+            }
+            if (container) {
+                container.removeEventListener('scroll', handleManualScroll);
+                container = null;
+            }
+        }
     };
 };

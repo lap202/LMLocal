@@ -18,9 +18,24 @@
             <span id="status-separator" style="display:none"> · </span>
             <span id="model-name">...</span>
         </div>
-        <button class="btn-clear-icon" title="Clear history" tabindex="-1">🗑</button>
-    </div>
+        <div class="menu-container">
+            <button id="menu-btn" class="btn-clear-icon" title="Menu">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M1 3h14v2H1V3zm0 4h14v2H1V7zm0 4h14v2H1v-2z" />
+                </svg>
+            </button>
 
+            <div id="dropdown-menu" class="dropdown-content">
+                <button data-action="clear-chat">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px;">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+                    </svg>
+                    Clear chat
+                </button>
+            </div>
+        </div>
+    </div>
     <div id="chat-container"
          role="log"
          aria-live="polite"

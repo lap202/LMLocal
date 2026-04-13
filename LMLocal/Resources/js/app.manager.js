@@ -1,11 +1,18 @@
 import { AppStatus, UIText, CONFIG, AppSelectors, AppStore } from './app.globals.js';
 import BridgeClient from './bridge.client.js';
 
-
+/**
+ * AppManager - central controller for streaming and UI state.
+ * Buffers incoming stream chunks and flushes them to `AppStore` on intervals or at stream end,
+ * coordinates `BridgeClient` operations and overall app lifecycle transitions,
+ * and services `BridgeMessageDispatcher` callbacks.
+ */
 const AppManager = {
-    // Buffer incoming stream chunks and flush to AppStore at intervals (CONFIG.STREAM_BUFFER_INTERVAL_MS) to throttle UI updates.
+
     _streamBuffer: "",
+    _thoughtBuffer: "",
     _lastRenderTimestamp: 0,
+    _lastRenderTimestampThought: 0,
 
     async onAppInit() {
         AppStore.setState({ status: AppStatus.CONNECTING, error: null });
@@ -15,7 +22,7 @@ const AppManager = {
                 AppStore.setState({
                     status: AppStatus.IDLE,
                     modelName: response.ModelName,
-                    tokenUsed: response.UsedTokens || 0,
+                    tokenUsed: response.UsedTokens ?? 0,
                     tokenMax: response.MaxContext || CONFIG.MAX_TOKENS,
                     tokenSpeed: 0,
                     error: null
@@ -34,6 +41,7 @@ const AppManager = {
 
     onFatalError(message) {
         this._streamBuffer = "";
+        this._thoughtBuffer = "";
         AppStore.setState({
             status: AppStatus.OFFLINE,
             error: message,
@@ -52,11 +60,11 @@ const AppManager = {
     },
 
     async performSendMessage(text) {
-        const cleanText = text.trim();
+        const cleanText = (text || '').trim();
         if (!cleanText || !AppSelectors.canSend(AppStore.getState())) return;
 
-        AppStore.setState({ status: AppStatus.PROCESSING, accumulatedText: "", error: null, userMessage: cleanText });
-        // We don't await this because we want the UI to update to PROCESSING immediately, and the streaming will come through the message dispatcher
+        AppStore.setState({ status: AppStatus.PROCESSING, accumulatedText: "", accumulatedThoughtText: "", error: null, userMessage: cleanText });
+
         BridgeClient.executePromptAsync(cleanText).catch(e => {
             console.error("Async Bridge Error:", e);
             this.onFatalError("Critical bridge communication failure.");
@@ -83,7 +91,6 @@ const AppManager = {
     },
 
     async performClearChat() {
-        // Check if we're not busy and confirm with the user before clearing
         if (!AppSelectors.isBusy(AppStore.getState()) && confirm(UIText.CONFIRM_CLEAR_CONVERSATION)) {
 
             AppStore.setState({
@@ -92,24 +99,27 @@ const AppManager = {
             });
 
             try {
-                // Clear history on the backend
+
                 await BridgeClient.resetHistoryAsync();
 
-                // Reset state to IDLE after clearing
+                this._streamBuffer = "";
+                this._thoughtBuffer = "";
+
                 AppStore.setState({
                     status: AppStatus.IDLE,
                     tokenUsed: 0,
                     tokenSpeed: 0,
                     accumulatedText: "",
+                    accumulatedThoughtText: "",
                     userMessage: "",
                     error: null
                 });
             } catch (error) {
-                // If there's an error clearing history, we should show an error message
                 AppStore.setState({
                     status: AppStatus.ERROR,
                     error: "Failed to clear chat history",
                     accumulatedText: "",
+                    accumulatedThoughtText: "",
                     userMessage: "",
                     tokenUsed: 0,
                     tokenSpeed: 0
@@ -117,9 +127,37 @@ const AppManager = {
             }
         }
     },
+    handleStreamThought(chunk, count, speed) {
+        const status = AppStore.getState().status;
+        if ([AppStatus.STOPPING, AppStatus.ERROR, AppStatus.OFFLINE].includes(status)) return;
 
-    handleStreamChunk(chunk, count, speed) {
-        if ([AppStatus.STOPPING, AppStatus.ERROR, AppStatus.OFFLINE].includes(AppStore.getState().status)) return;
+        if (status !== AppStatus.THINKING && status === AppStatus.PROCESSING) {
+            AppStore.setState({ status: AppStatus.THINKING });
+        }
+
+        this._thoughtBuffer += chunk;
+
+        const now = Date.now();
+
+        if (now - this._lastRenderTimestampThought > CONFIG.STREAM_BUFFER_INTERVAL_MS) {
+            AppStore.setState(prevState => ({
+                status: AppStatus.THINKING,
+                accumulatedThoughtText: prevState.accumulatedThoughtText + this._thoughtBuffer,
+                tokenUsed: count,
+                tokenSpeed: speed
+            }));
+            this._thoughtBuffer = "";
+            this._lastRenderTimestampThought = now;
+        }
+    },
+    handleStreamContent(chunk, count, speed) {
+        const status = AppStore.getState().status;
+
+        if ([AppStatus.STOPPING, AppStatus.ERROR, AppStatus.OFFLINE].includes(status)) return;
+
+        if (status !== AppStatus.STREAMING && status === AppStatus.THINKING) {
+            AppStore.setState({ status: AppStatus.STREAMING });
+        }
 
         this._streamBuffer += chunk;
         const now = Date.now();
@@ -137,16 +175,17 @@ const AppManager = {
     },
 
     handleStreamEnd() {
-        const state = AppStore.getState();
-        const currentStatus = state.status;
+        const status = AppStore.getState().status;
 
-        if ([AppStatus.ERROR, AppStatus.OFFLINE].includes(currentStatus)) {
+        if ([AppStatus.ERROR, AppStatus.OFFLINE].includes(status)) {
             this._streamBuffer = "";
+            this._thoughtBuffer = "";
             return;
         }
 
-        if (currentStatus === AppStatus.STOPPING) {
+        if (status === AppStatus.STOPPING) {
             this._streamBuffer = "";
+            this._thoughtBuffer = "";
             AppStore.setState({
                 status: AppStatus.IDLE,
                 tokenSpeed: 0
@@ -154,15 +193,26 @@ const AppManager = {
             return;
         }
 
-        const finalContent = state.accumulatedText + this._streamBuffer;
-        this._streamBuffer = "";
+        if (this._thoughtBuffer) {
+            AppStore.setState(prevState => ({
+                accumulatedThoughtText: prevState.accumulatedThoughtText + this._thoughtBuffer
+            }));
+            this._thoughtBuffer = "";
+            this._lastRenderTimestampThought = Date.now();
+        }
+
+        if (this._streamBuffer) {
+            AppStore.setState(prevState => ({
+                accumulatedText: prevState.accumulatedText + this._streamBuffer
+            }));
+            this._streamBuffer = "";
+            this._lastRenderTimestamp = Date.now();
+        }
 
         AppStore.setState({
             status: AppStatus.FINISHING,
-            accumulatedText: finalContent
         });
 
-        // Use a microtask to ensure the UI updates to FINISHING before switching back to IDLE, allowing any final animations or effects to play out
         Promise.resolve().then(() => {
             if (AppStore.getState().status === AppStatus.IDLE) return;
             AppStore.setState({
@@ -174,6 +224,8 @@ const AppManager = {
 
     handleStreamError(message) {
         this._streamBuffer = "";
+        this._thoughtBuffer = "";
+
         AppStore.setState({
             status: AppStatus.ERROR,
             error: message,

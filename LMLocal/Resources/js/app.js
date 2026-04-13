@@ -6,7 +6,7 @@ import MessageRenderer from './message.renderer.js';
 
 window.lmInit = async () => {
     try {
-        if (typeof AppController !== 'undefined' && AppController.init && !AppController.initialized) {
+        if (typeof AppController.init === 'function' && !AppController.initialized) {
             // Call init if it hasn't been called yet (for tests, for example)
             await AppController.init();
         }
@@ -21,7 +21,7 @@ window.lmInit = async () => {
            Default here is STREAMING_MARKDOWN to enable incremental rendering of streamed messages.
         */
 
-        MessageRenderer.setRenderer(MessageRenderer.RendererType.STREAMING_MARKDOWN);
+        MessageRenderer.setRenderer(MessageRenderer.RendererType.MARKED);
 
     } catch (error) {
         console.error('Error during app initialization:', error);

@@ -4,10 +4,20 @@ import ChatComponent from './chat.component.js';
 import AppManager from './app.manager.js';
 import { AppSelectors, AppStore } from './app.globals.js';
 import BridgeMessageDispatcher from './bridge.message.dispatcher.js';
+import MenuComponent from './menu.component.js';
 
+/**
+ * AppController - central initializer and event router.
+ * Waits for required DOM elements, initializes UI components (Status, Input, Chat, Menu),
+ * wires AppStore subscriptions and component event handlers, and starts the BridgeMessageDispatcher.
+ * AppController only bootstraps and routes events, it does not handle streaming itself.
+ */
 const AppController = (() => {
-    // Public methods that will be available to other modules
+
     let initialized = false;
+    let _storeListener = null;
+    let _globalClickHandler = null;
+
     async function init() {
         if (initialized) return;
 
@@ -27,20 +37,21 @@ const AppController = (() => {
             return false;
         };
 
-        // Wait for the small set of elements our components require.
-        await ensureDomAndElements(['#userInput', '#mainBtn', '#chat-container', '#conn-status'], 2000);
+        await ensureDomAndElements(['#userInput', '#mainBtn', '#chat-container', '#conn-status'], 100);
 
         // 1. Initialize components (safe now that DOM elements are present)
         StatusComponent.init();
         InputComponent.init();
         ChatComponent.init();
+        MenuComponent.init();
 
         // 2. Subscribe to store for UI updates
-        AppStore.subscribe((state, prev) => {
+        _storeListener = (state, prev) => {
             StatusComponent.update(state, prev);
             InputComponent.update(state, prev);
             ChatComponent.update(state, prev);
-        });
+        };
+        AppStore.subscribe(_storeListener);
 
         // 3. Subscribe to InputComponent events
         InputComponent.onClick.on(async (text) => {
@@ -69,17 +80,23 @@ const AppController = (() => {
         });
 
 
-        // 4. Global handlers (clear chat, retry)
-        document.querySelector('.btn-clear-icon')?.addEventListener('click', async () => {
-            await AppManager.performClearChat();
+        MenuComponent.onClick.on(async (action) => {
+            switch (action) {
+                case "clear-chat":
+                    await AppManager.performClearChat();
+                    return true;
+                default:
+                    return false;
+            }
         });
 
-        const retryBtn = document.getElementById('retry-btn');
-        if (retryBtn) {
-            retryBtn.addEventListener('click', async () => {
-                await AppManager.onAppInit();
-            });
-        }
+        StatusComponent.onRetry.on(async () => {
+            await AppManager.onAppInit();
+        });
+
+        // 4. Global handlers (menu)
+        _globalClickHandler = () => { MenuComponent.hideMenu(); };
+        window.addEventListener('click', _globalClickHandler);
 
         BridgeMessageDispatcher.start(AppManager);
 
@@ -88,7 +105,30 @@ const AppController = (() => {
 
     return {
         init,
-        get initialized() { return initialized; }
+        get initialized() { return initialized; },
+        destroy() {
+            // reverse initialization: remove handlers, unsubscribe, stop dispatcher and destroy components
+            if (!initialized) return;
+
+            if (_globalClickHandler) {
+                window.removeEventListener('click', _globalClickHandler);
+                _globalClickHandler = null;
+            }
+
+            if (_storeListener) {
+                AppStore.unsubscribe(_storeListener);
+                _storeListener = null;
+            }
+
+            BridgeMessageDispatcher.stop();
+
+            StatusComponent.destroy();
+            InputComponent.destroy();
+            ChatComponent.destroy();
+            MenuComponent.destroy();
+
+            initialized = false;
+        }
     };
 })();
 

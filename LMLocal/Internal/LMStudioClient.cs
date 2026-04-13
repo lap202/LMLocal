@@ -136,8 +136,10 @@ namespace LMLocal.Internal
                     var parsed = JObject.Parse(json);
                     return parsed["choices"]?[0]?["message"]?["content"]?.ToString();
                 }
-                catch (JsonException)
+                catch (JsonException ex)
                 {
+                    // Log parsing error in debug builds to aid troubleshooting
+                    InternalLogger.Error("SendNonStreamingAsync: failed to parse response JSON", ex);
                     return null; // Handle unparsable response gracefully
                 }
             }
@@ -150,14 +152,15 @@ namespace LMLocal.Internal
                 var parsed = JObject.Parse(rawResponse);
                 return parsed["error"]?["message"]?.ToString();
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
+                InternalLogger.Warn($"TryExtractErrorMessage: invalid JSON response: {ex.Message}");
                 return null;
             }
         }
     }
 
-    public class GetStatusReponse
+    public class GetStatusResponse
     {
         public string Status { get; set; }
         public string ModelName { get; set; }

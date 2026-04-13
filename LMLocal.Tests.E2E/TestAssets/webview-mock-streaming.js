@@ -1,4 +1,4 @@
-// Mock that simulates streaming: fires chunks then ChatComplete via postMessage
+// Mock that simulates streaming: fires chunks then StreamEnd via postMessage
 const _listeners = [];
 
 const __mockBridge = {
@@ -20,19 +20,19 @@ const __mockBridge = {
     ExecutePromptAsync: async (prompt) => {
         setTimeout(() => {
             _listeners.forEach(fn => fn({
-                data: { Type: 'ChatChunk', Payload: '```javascript\nconsole.log("hello");\n```', Count: 10, TokensPerSecond: 15.5 }
+                data: { Type: 'StreamContent', Payload: '```javascript\nconsole.log("hello");\n```', Count: 10, TokensPerSecond: 15.5 }
             }));
         }, 50);
         setTimeout(() => {
             _listeners.forEach(fn => fn({
-                data: { Type: 'ChatComplete' }
+                data: { Type: 'StreamEnd' }
             }));
         }, 150);
     },
     StopExecutionAsync: async () => {
         setTimeout(() => {
             _listeners.forEach(fn => fn({
-                data: { Type: 'ChatComplete' }
+                data: { Type: 'StreamEnd' }
             }));
         }, 50);
     },

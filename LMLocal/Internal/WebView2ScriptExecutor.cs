@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Threading.Tasks;
@@ -35,21 +35,22 @@ namespace LMLocal.Internal
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("CoreWebView2 is null, cannot post message.");
+                    InternalLogger.Warn("WebView2ScriptExecutor: CoreWebView2 is null, cannot post message.");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"PostMessageAsJsonAsync error: {ex}");
+                InternalLogger.Error("WebView2ScriptExecutor.PostMessageAsJsonAsync failed", ex);
             }
         }
     }
 
     public enum WebView2MessageType
     {
-        ChatChunk,
-        ChatComplete,
-        Error,
+        StreamThought,
+        StreamContent,
+        StreamEnd,
+        StreamError,
         CompactionStart,
         CompactionEnd
     }
@@ -57,7 +58,7 @@ namespace LMLocal.Internal
     {
         [JsonConverter(typeof(StringEnumConverter))]
         public WebView2MessageType Type { get; set; }
-        public object Payload { get; set; }
+        public string Payload { get; set; }
     }
 
     public class WebView2ScriptMessageWithCount : WebView2ScriptMessage

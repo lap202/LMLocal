@@ -1,4 +1,5 @@
-﻿:root {
+﻿/* ====== Root variables (color tokens) ====== */
+:root {
     --bg-color: #1e1e1e;
     --text-color: #d4d4d4;
     --input-bg: #3c3c3c;
@@ -8,8 +9,31 @@
     --ai-msg-bg: #252526;
     --success-color: #6a9955;
     --danger-color: #c75050;
+    --top-bar-bg: #2d2d30; /* Top bar color */
+    --status-bar-bg: #252526; /* Bottom bar and input container color */
+    --code-header-bg: #323233; /* Code block header background */
+    --strong-text: #ffffff; /* Color for bold text in AI messages */
+    --skeleton-grad-1: #333; /* For loading animation */
+    --skeleton-grad-2: #444;
+    --link-color: #58a6ff;
+    --link-hover: #1f6feb;
+    --scrollbar-thumb: #3e3e42;
+    --btn-icon-color: #888;
+    --btn-icon-hover: #fff;
+    --code-inline-bg: rgba(255, 255, 255, 0.1);
+    --code-inline-text: #e2c08d;
+    --table-zebra: rgba(255, 255, 255, 0.02);
+    --selection-bg: var(--accent-color);
+    --selection-text: #ffffff;
+    --code-inline-table-bg: rgba(255, 255, 255, 0.1);
+    --dropdown-bg: #2d2d30;
+    --dropdown-hover: #3e3e42;
+    --stop-bg: rgba(199, 80, 80, 0.08);
+    --stop-border: rgba(199, 80, 80, 0.3);
+    --stop-text: #e07a7a;
 }
 
+/* ====== Layout and base styles ====== */
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -21,12 +45,17 @@ body {
     overflow: hidden;
 }
 
+::selection {
+    background-color: var(--selection-bg);
+    color: var(--selection-text);
+}
+/* ====== Top info bar ====== */
 #top-info-bar {
     display: flex;
     align-items: center;
     height: 35px;
     padding: 0 12px;
-    background: #2d2d30;
+    background: var(--top-bar-bg);
     border-bottom: 1px solid var(--border-color);
     gap: 15px;
 }
@@ -42,17 +71,18 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 4px;
+    width: 8px;
     height: 18px;
     padding: 0 2px;
     flex: none;
     cursor: help;
 }
 
+/* ====== Token / progress bar ====== */
 .progress-container {
-    width: 100%;
+    width: 4px;
     height: 100%;
-    background: #30363d;
+    background: var(--border-color);
     border-radius: 10px;
     overflow: hidden;
     display: flex;
@@ -68,21 +98,22 @@ body {
     box-shadow: 0 0 4px var(--accent-color);
 }
 
+/* ====== Icon buttons ====== */
 .btn-clear-icon {
     margin-left: auto;
     background: transparent;
     border: none;
-    color: #888;
+    color: var(--btn-icon-color);
     cursor: pointer;
     padding: 4px 8px;
     font-size: 14px;
 }
 
     .btn-clear-icon:hover {
-        color: #fff;
+        color: var(--btn-icon-hover);
     }
 
-/* Chat */
+/* ====== Chat container ====== */
 #chat-container {
     flex: 1;
     overflow-y: auto;
@@ -101,13 +132,6 @@ body {
     word-wrap: break-word;
 }
 
-.user-message {
-    align-self: flex-end;
-    background-color: var(--user-msg-bg);
-    border-right: 3px solid var(--accent-color);
-    white-space: pre-wrap !important;
-}
-
 .ai-message {
     align-self: stretch;
     background-color: var(--ai-msg-bg);
@@ -115,14 +139,12 @@ body {
     line-height: 1.6;
     max-width: 100%;
     word-wrap: break-word;
-
     content-visibility: auto;
     contain-intrinsic-size: 1px 200px;
     contain: layout paint;
 }
 
     .ai-message.completed {
-
     }
 
     .ai-message p {
@@ -149,19 +171,18 @@ body {
     }
 
     .ai-message strong, .ai-message b {
-        color: #ffffff;
+        color: var(--strong-text);
         font-weight: 600;
     }
 
     .ai-message :not(pre) > code {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: var(--code-inline-bg);
+        color: var(--code-inline-text);
         padding: 2px 5px;
         border-radius: 3px;
         font-family: 'Consolas', monospace;
         font-size: 0.9em;
-        color: #e2c08d;
     }
-
 
     .ai-message pre code {
         background-color: transparent !important;
@@ -180,18 +201,19 @@ body {
     }
 
     .ai-message a {
+        color: var(--link-color);
         text-decoration: none;
         transition: color 0.2s ease;
     }
 
-    .ai-message a:hover {
-        text-decoration: underline;
-        color: #1f6feb;
-    }
+        .ai-message a:hover {
+            text-decoration: underline;
+            color: var(--link-hover);
+        }
 
-    .ai-message a:visited {
-        color: #a371f7;
-    }
+        .ai-message a:visited {
+            color: #a371f7;
+        }
 
     .ai-message table {
         display: table;
@@ -214,17 +236,17 @@ body {
     }
 
 
-    .ai-message td code {
-        white-space: normal;
-        word-break: break-word;
-        background: rgba(255,255,255,0.1);
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-size: 0.95em;
-    }
+        .ai-message td code {
+            white-space: normal;
+            word-break: break-word;
+            background: var(--code-inline-table-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
 
     .ai-message tr:nth-child(even) {
-        background-color: rgba(255, 255, 255, 0.02);
+        background-color: var(--table-zebra);
     }
 
 .code-block-container {
@@ -238,7 +260,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #323233;
+    background-color: var(--code-header-bg);
     padding: 5px 12px;
     font-size: 11px;
     color: #aaa;
@@ -254,7 +276,7 @@ body {
 .header-copy-btn {
     background: transparent;
     border: none;
-    color: #ccc;
+    color: var(--btn-icon-color);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -265,8 +287,8 @@ body {
 }
 
     .header-copy-btn:hover {
-        background: #444;
-        color: #fff;
+        background: var(--input-bg);
+        color: var(--btn-icon-hover);
     }
 
     .header-copy-btn svg {
@@ -279,14 +301,17 @@ body {
     }
 
 pre {
-    margin: 0 !important;
+    padding: 6px !important;
+    margin: 6px !important;
     border: none !important;
+    line-height: 1.5;
     border-top-left-radius: 0 !important;
     border-top-right-radius: 0 !important;
+    white-space: pre-wrap;
 }
 
     pre code {
-        padding: 12px !important;
+        padding: 6px !important;
         display: block;
     }
 
@@ -301,7 +326,7 @@ pre {
     display: flex;
     align-items: center;
     height: 24px;
-    background: #252526;
+    background: var(--status-bar-bg);
     padding: 0 15px;
     font-size: 11px;
     color: #888;
@@ -344,50 +369,88 @@ pre {
     align-items: flex-end;
     gap: 8px;
     padding: 12px;
-    background: #252526;
+    background: var(--status-bar-bg);
     border-top: 1px solid var(--border-color);
 }
 
 #userInput {
     flex: 1;
     background: var(--input-bg);
-    border: 1px solid #444;
-    color: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
     padding: 10px;
     border-radius: 4px;
     resize: none;
     max-height: 200px;
     outline: none;
 }
-
+/* ====== Chat container ====== */
 #mainBtn {
     height: 38px;
-    padding: 0 15px;
+    padding: 0 15px 0 12px;
     background: var(--accent-color);
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
-    min-width: 80px;
+    min-width: 100px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
+
+    #mainBtn::before {
+        content: "◇";
+        display: inline-block;
+        font-size: 14px;
+        line-height: 1;
+        width: 1em;
+        text-align: center;
+        vertical-align: middle;
+    }
 
     #mainBtn.btn-stop {
         background: var(--danger-color);
     }
 
+        #mainBtn.btn-stop::before {
+            content: "■";
+            display: inline-block;
+            font-size: 12px;
+            line-height: 1;
+            width: 1em;
+            text-align: center;
+            vertical-align: middle;
+        }
+
     #mainBtn:disabled {
-        background: #555 !important;
+        background: var(--border-color) !important;
         cursor: not-allowed;
-        opacity: 0.8;
+        opacity: 0.5;
     }
 
+
+    #mainBtn.btn-stop:disabled {
+        background: var(--danger-color) !important;
+        opacity: 0.4;
+    }
+
+        #mainBtn.btn-stop:disabled::before {
+            content: none; 
+            display: none;
+        }
+
+/* ====== Scroll ====== */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #3e3e42;
+    background: var(--scrollbar-thumb);
 }
 
 .model-info span.retryable {
@@ -399,52 +462,46 @@ pre {
     .model-info span.retryable:hover {
         opacity: 0.8;
     }
-
-.ai-message:has(.skeleton-loader) {
-    align-self: stretch;
-    width: auto;
-}
-
-.skeleton-loader {
+/* ====== loading indicator ====== */
+.loading-indicator {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 8px 0;
-    min-width: 250px;
-    width: 100%;
+    flex-direction: row;
+    gap: 6px;
+    padding: 12px 16px;
+    width: fit-content;
 }
 
-.skeleton-line {
-    height: 12px;
-    background: linear-gradient(90deg, #333 25%, #444 50%, #333 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    border-radius: 4px;
-    display: block;
-}
-
-    .skeleton-line:nth-child(1) {
-        width: 95%;
+    .loading-indicator .dot {
+        width: 8px;
+        height: 8px;
+        background-color: var(--skeleton-grad-1, #888);
+        border-radius: 50%;
+        animation: bounceFade 1.4s infinite ease-in-out both;
     }
 
-    .skeleton-line:nth-child(2) {
-        width: 80%;
+
+        .loading-indicator .dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-indicator .dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+@keyframes bounceFade {
+    0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.3;
     }
 
-    .skeleton-line:nth-child(3) {
-        width: 50%;
-    }
-
-@keyframes shimmer {
-    0% {
-        background-position: 200% 0;
-    }
-
-    100% {
-        background-position: -200% 0;
+    40% {
+        transform: scale(1);
+        opacity: 1;
     }
 }
 
+
+/* ====== connection status  ====== */
 #conn-status.online {
     color: var(--success-color);
     cursor: default;
@@ -500,36 +557,283 @@ pre {
         transform: rotate(360deg);
     }
 }
-
-
-.user-message.expandable {
-    position: relative;
+/*User message styles*/
+.user-message {
+    align-self: flex-end;
+    background-color: var(--user-msg-bg);
+    border-right: 3px solid var(--accent-color);
+    white-space: pre-wrap !important;
 }
 
-    .user-message.expandable .message-content {
-        max-height: 150px;
-        overflow: hidden;
-        mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    .user-message.expandable {
+        position: relative;
     }
 
-.user-message.expanded .message-content {
-    max-height: none;
-    mask-image: none;
-}
+        .user-message.expandable .message-content {
+            max-height: 150px;
+            overflow: hidden;
+            mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+        }
 
-.show-more-btn {
-    background: var(--input-bg);
-    border: 1px solid var(--border-color);
-    color: var(--accent-color);
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 4px;
+    .user-message.expanded .message-content {
+        max-height: none;
+        mask-image: none;
+        -webkit-mask-image: none;
+    }
+/* Show more buttons */
+
+.show-more-btn, .toggle-thought-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #888 !important;
+    font-size: 14px; /* Chevrons look better slightly larger */
     cursor: pointer;
-    margin-top: 8px;
-    display: block;
-    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, color 0.2s, opacity 0.2s;
+    padding: 5px;
+    line-height: 1;
+    text-decoration: none !important;
+    /* 1. Positioning on the right */
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    /* 2. Hidden by default */
+    opacity: 0;
+    font-weight: 500;
+}
+.toggle-thought-btn {
+    top: 5px;
+}
+    .user-message .show-more-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%; /* Stretch across the full width */
+    height: 30px; /* Height of the active top area */
+    justify-content: flex-end; /* Keep the icon aligned to the right */
+    padding-right: 15px;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
 }
 
-    .show-more-btn:hover {
-        background: var(--border-color);
+    .user-message .show-more-btn:hover {
+        background: linear-gradient(to bottom, rgba(136, 136, 136, 0.05), transparent) !important;
+        color: var(--accent-color) !important;
+    }
+
+/* 2. Appear when hovering over the parent container */
+.user-message:hover .show-more-btn,
+.thought-container:hover .toggle-thought-btn {
+    opacity: 1;
+}
+
+/* 3. Change the icon to a Chevron (use a thin system glyph) */
+.show-more-btn::before, .toggle-thought-btn::before {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-color: currentColor; 
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    mask-position: center;
+}
+
+/* Rotate the icon when expanded */
+.thought-container.expanded .toggle-thought-btn {
+    transform: rotate(180deg);
+}
+
+.show-more-btn:hover, .toggle-thought-btn:hover {
+    color: var(--success-color) !important;
+    background: rgba(136, 136, 136, 0.1) !important;
+}
+
+/* Important addition for positioning */
+.user-message, .thought-container {
+    position: relative; /* So absolute buttons are positioned relative to these blocks */
+}
+
+/* Adjust header so text does not overlap the button */
+.reasoning-header {
+    padding-right: 30px;
+}
+
+
+
+/* ====== Thought / Reasoning container ====== */
+.thought-container {
+    display: block;
+    margin: 12px 0;
+    border-left: 2px solid var(--border-color, #e0e0e0);
+    overflow: hidden;
+    transition: border-color 0.3s ease;
+}
+
+/* Header - always visible */
+.reasoning-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+    .reasoning-header:hover {
+        opacity: 1;
+    }
+
+/* Title with ◇ icon */
+.reasoning-title {
+    font-size: 11px;
+    color: var(--text-color, #444);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+    /* Styling of the icon before the text */
+    .reasoning-title::before {
+        content: "◇";
+        font-size: 14px;
+        color: var(--success-color, #888);
+        display: inline-block;
+        transition: transform 0.3s ease, color 0.3s ease;
+        line-height: 1;
+    }
+
+/* Content: completely hidden when collapsed */
+.thought-content {
+    display: none;
+    font-size: 0.875rem;
+    opacity: 0;
+    padding: 0 12px; /* Vertical padding reset */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-word;
+    height: auto;
+    max-height: none;
+}
+
+    /* Expanded state (add this class via JS) */
+    .thought-content.expanded {
+        display: block;
+        opacity: 1;
+        padding: 4px 12px 4px 12px; /* Restore padding */
+    }
+
+/* Change the icon to a filled diamond when expanded */
+.thought-container:has(.thought-content.expanded) .reasoning-title::before {
+    content: "◈";
+    color: var(--success-color, #888);
+    transform: scale(1.1);
+}
+
+/* Animation for the thinking process */
+.thought-container.is-thinking .reasoning-title::before {
+    animation: thought-blink 1.5s infinite;
+}
+
+@keyframes thought-blink {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.3;
+        transform: scale(0.9);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ====== Dropdown menu styles ====== */
+/* Container for the menu button (placed in the top bar) */
+.menu-container {
+    position: relative;
+    margin-left: auto;
+}
+
+/* Dropdown content - hidden by default, shown when .show class is added via JS */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: var(--dropdown-bg);
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.4);
+    z-index: 1000;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+    /* Buttons inside the dropdown */
+    .dropdown-content button {
+        color: var(--text-color);
+        padding: 8px 12px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 12px;
+        text-align: left;
+    }
+
+        .dropdown-content button:hover {
+            background-color: var(--dropdown-hover);
+        }
+
+    .dropdown-content.show {
+        display: block;
+    }
+/* ====== Retry button styles ====== */
+#retry-btn.retry-animate {
+    animation: retrySpin 0.5s ease-in-out;
+}
+
+@keyframes retrySpin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+/* ====== Retry button styles ====== */
+.generation-stopped {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 4px 10px;
+    background: var(--stop-bg);
+    border: 1px solid var(--stop-border);
+    color: var(--stop-text);
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+    .generation-stopped::before {
+        content: "■";
+        font-size: 10px;
     }

@@ -11,73 +11,71 @@ namespace LMLocal.Internal
     /// </summary>
     internal class StreamProcessor
     {
-        private readonly Func<string, TokenGenerationStats, Task> _onChunk;
+        private readonly Func<StreamChunk, TokenGenerationStats, Task> _onChunk;
         private readonly Func<string, Task> _onError;
-        private readonly int _batchIntervalMs; // Batching interval (e.g., 100-150 ms)
+        private readonly int _batchIntervalMs;
+        private readonly ITokenSpeedCalculator _tokenSpeedCalculator;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="StreamProcessor"/> class.
-        /// </summary>
-        /// <param name="onChunk">Callback for each chunk of text and token generation statistics.</param>
-        /// <param name="onError">Callback for errors.</param>
-        /// <param name="batchIntervalMs">Batching interval in milliseconds.</param>
-        public StreamProcessor(Func<string, TokenGenerationStats, Task> onChunk, Func<string, Task> onError, int batchIntervalMs = 150)
+        public StreamProcessor(Func<StreamChunk, TokenGenerationStats, Task> onChunk, Func<string, Task> onError, int batchIntervalMs = 50, ITokenSpeedCalculator tokenSpeedCalculator = null)
         {
             _onChunk = onChunk;
             _onError = onError;
             _batchIntervalMs = batchIntervalMs;
+            _tokenSpeedCalculator = tokenSpeedCalculator;
         }
 
-        /// <summary>
-        /// Processes the stream asynchronously, batching output and reporting tokens.
-        /// </summary>
-        /// <param name="stream">The stream to process.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        /// <returns>A tuple containing the full response and total tokens.</returns>
         public async Task<string> ProcessStreamAsync(
             Stream stream,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var fullResponse = new StringBuilder(); // Full text for history
-            var chunkBuffer = new StringBuilder();  // Text for the current batch
+            var fullResponse = new StringBuilder();
+            var contentBuffer = new StringBuilder();
+            var reasoningBuffer = new StringBuilder();
             int currentTokens = 0;
-            var speedCalculator = new TokenSpeedCalculator(windowSeconds: 5);
+            var speedCalculator = _tokenSpeedCalculator ?? (ITokenSpeedCalculator)new TokenSpeedCalculator(windowSeconds: 5);
 
             var syncLock = new object();
             bool isReading = true;
 
             var cancelRegistration = cancellationToken.Register(() => stream.Close());
 
-            // Consumer thread: periodically flushes the buffer to the UI
             var consumerTask = Task.Run(async () =>
             {
                 try
                 {
                     while (true)
                     {
-                        string chunkToSend = null;
+                        StreamChunk? chunkToSend = null;
                         TokenGenerationStats statsToSend = default;
                         bool done = false;
 
                         lock (syncLock)
                         {
-                            if (chunkBuffer.Length > 0)
+                            if (reasoningBuffer.Length > 0)
                             {
-                                chunkToSend = chunkBuffer.ToString();
-                                chunkBuffer.Clear();
+                                var t = reasoningBuffer.ToString();
+                                reasoningBuffer.Clear();
+                                chunkToSend = new StreamChunk(t, ChunkKind.Reasoning);
                             }
+                            else if (contentBuffer.Length > 0)
+                            {
+                                var t = contentBuffer.ToString();
+                                contentBuffer.Clear();
+                                chunkToSend = new StreamChunk(t, ChunkKind.Content);
+                            }
+
                             statsToSend = new TokenGenerationStats(currentTokens, speedCalculator.GetTokensPerSecond());
-                            done = !isReading;
+
+                            done = !isReading && reasoningBuffer.Length == 0 && contentBuffer.Length == 0;
                         }
 
-                        if (chunkToSend != null && _onChunk != null)
+                        if (chunkToSend.HasValue && !chunkToSend.Value.IsEmpty && _onChunk != null)
                         {
-                            await _onChunk(chunkToSend, statsToSend).ConfigureAwait(false);
+                            await _onChunk(chunkToSend.Value, statsToSend).ConfigureAwait(false);
                         }
 
-                        // If reading is complete, we've flushed the final chunk, so we can exit.
                         if (done || cancellationToken.IsCancellationRequested) break;
 
                         try
@@ -90,17 +88,21 @@ namespace LMLocal.Internal
                         }
                     }
                 }
-                catch (OperationCanceledException) { }
+                catch (OperationCanceledException)
+                {
+                    // Expected during cancellation; log at debug level
+                    InternalLogger.Info("StreamProcessor consumerTask canceled");
+                }
                 catch (Exception ex)
                 {
-                    // Do not forward cancellation as an error — treat cancellation as normal termination.
+                    // Log unexpected exceptions and forward to onError
+                    InternalLogger.Error("StreamProcessor consumerTask exception", ex);
                     if (ex is OperationCanceledException) return;
                     if (_onError != null)
                         await _onError(ex.Message).ConfigureAwait(false);
                 }
             });
 
-            // Producer thread: reads the network stream as fast as possible
             using (var reader = new StreamReader(stream))
             {
                 try
@@ -114,23 +116,23 @@ namespace LMLocal.Internal
                         try
                         {
                             int tempTokens = currentTokens;
-                            string delta = LlmSseParser.ExtractDelta(line, ref tempTokens);
+                            var chunk = LlmSseParser.ExtractDelta(line, ref tempTokens);
 
-                            if (!string.IsNullOrEmpty(delta) || tempTokens != currentTokens)
+                            if (chunk.Equals(default(StreamChunk)) == false)
                             {
                                 lock (syncLock)
                                 {
-                                    if (!string.IsNullOrEmpty(delta))
+                                    if (chunk.Kind == ChunkKind.Reasoning)
                                     {
-                                        chunkBuffer.Append(delta);
+                                        reasoningBuffer.Append(chunk.Text);
+                                    }
+                                    else
+                                    {
+                                        contentBuffer.Append(chunk.Text);
+                                        fullResponse.Append(chunk.Text);
                                     }
                                     currentTokens = tempTokens;
                                     speedCalculator.Update(currentTokens);
-                                }
-
-                                if (!string.IsNullOrEmpty(delta))
-                                {
-                                    fullResponse.Append(delta);
                                 }
                             }
                         }
@@ -140,7 +142,8 @@ namespace LMLocal.Internal
                         }
                         catch (Exception ex)
                         {
-                            // If it's cancellation propagate so outer handlers can treat it normally
+                            // Log parse/processing errors and notify consumer
+                            InternalLogger.Error("StreamProcessor: error while parsing stream line", ex);
                             if (ex is OperationCanceledException) throw;
                             if (_onError != null)
                                 await _onError(ex.Message).ConfigureAwait(false);
@@ -153,12 +156,12 @@ namespace LMLocal.Internal
                 }
                 catch (Exception) when (cancellationToken.IsCancellationRequested)
                 {
-                    // stream.Close() threw an IOException, which is expected on cancellation
                     throw new OperationCanceledException(cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    // Do not forward cancellation as an error — treat it as normal termination.
+                    // Log unexpected reader exceptions and notify consumer
+                    InternalLogger.Error("StreamProcessor: reader loop exception", ex);
                     if (ex is OperationCanceledException) throw;
                     if (_onError != null)
                         await _onError(ex.Message).ConfigureAwait(false);
@@ -170,7 +173,6 @@ namespace LMLocal.Internal
                 }
             }
 
-            // Wait for consumer to finish flushing
             await consumerTask.ConfigureAwait(false);
 
             return fullResponse.ToString();

@@ -1,8 +1,10 @@
 "use strict";
 
-// Shared application constants, UI text and lightweight AppStore.
-// Exported as an ES module so other modules (components) can import without
-// relying on globals and to avoid circular dependencies when separating files.
+/**
+ * Shared application constants, UI text and lightweight AppStore.
+ * Exported as an ES module so other modules (components) can import without
+ * relying on globals and to avoid circular dependencies when separating files.
+ */
 
 export const AppStatus = {
     // Connection states
@@ -12,6 +14,7 @@ export const AppStatus = {
     // Operational states (only possible when ONLINE)
     IDLE: 'IDLE',               // terminal, ready to send, online
     PROCESSING: 'PROCESSING',   // pre-streaming (model thinking)
+    THINKING: 'THINKING',       // actively receiving thinking tokens
     STREAMING: 'STREAMING',     // actively receiving tokens
     COMPACTING: 'COMPACTING',   // background KV-cache optimization
     FINISHING: 'FINISHING',     // post-processing (highlighting, copy buttons)
@@ -28,6 +31,7 @@ export const UIText = {
     STATUS_ONLINE: 'Connected',
     STATUS_IDLE: 'Ready',
     STATUS_PROCESSING: 'Thinking...',
+    STATUS_THINKING: 'Reasoning...',
     STATUS_STREAMING: 'Generating...',
     STATUS_FINISHING: 'Finishing...',
     STATUS_STOPPING: 'Stopping...',
@@ -41,11 +45,12 @@ export const UIText = {
     COPY_LABEL: 'Copy',
     COPY_SUCCESS: 'Done!',
     COPY_ERROR: 'Error!',
-    SHOW_MORE: 'Show more',
-    SHOW_LESS: 'Show less',
+    SHOW_MORE: 'more',
+    SHOW_LESS: 'less',
     CONFIRM_CLEAR_CONVERSATION: 'Are you sure you want to clear the conversation?',
     TEXT_TOKENS: 'tokens',
     TEXT_TOKENS_PER_SECOND: 't/s',
+    TEXT_GENERATION_STOPPED: 'Generation stopped.',
 };
 
 export const Assets = {
@@ -54,10 +59,10 @@ export const Assets = {
 
 export const CONFIG = {
     MAX_DISPLAYED_MESSAGES: 200,
-    RENDER_THROTTLE_MS: 30,
-    STREAM_BUFFER_INTERVAL_MS: 30,
-    USER_MSG_COLLAPSE_THRESHOLD: 500,
-    USER_MSG_LINES_COLLAPSE_THRESHOLD: 8,
+    RENDER_THROTTLE_MS: 60,
+    STREAM_BUFFER_INTERVAL_MS: 60,
+    USER_MESSAGE_COLLAPSE_CHAR_LIMIT: 500,
+    USER_MESSAGE_COLLAPSE_LINES_LIMIT: 8,
     MAX_TOKENS: 16384,
     COPY_STATUS_RESET_MS: 2000,
     SCROLL_THRESHOLD_PX: 200
@@ -68,8 +73,8 @@ export const AppSelectors = {
     // Busy if not IDLE (includes STOPPING, CONNECTING, OFFLINE, etc.)
     isBusy: (state) => ![AppStatus.IDLE, AppStatus.ERROR].includes(state.status),
     // Generating only during active token flow
-    isGenerating: (state) => [AppStatus.PROCESSING, AppStatus.STREAMING].includes(state.status),
-    // Can send only when truly idle (implies online and no error)
+    isGenerating: (state) => [AppStatus.PROCESSING, AppStatus.THINKING, AppStatus.STREAMING].includes(state.status),
+    // Can send only when truly idle (implies online and if an error)
     canSend: (state) => [AppStatus.IDLE, AppStatus.ERROR].includes(state.status)
 };
 
@@ -83,6 +88,7 @@ export const AppStore = (() => {
         tokenSpeed: 0,
         error: null,
         accumulatedText: "",
+        accumulatedThoughtText: "",
         userMessage: ""
     };
 
@@ -98,6 +104,11 @@ export const AppStore = (() => {
             }
             listeners.add(fn);
             return () => listeners.delete(fn);
+        },
+        // Explicit unsubscribe method for convenience. Removes a previously added listener.
+        unsubscribe: (fn) => {
+            if (typeof fn !== 'function') return false;
+            return listeners.delete(fn);
         },
 
         setState: (nextStateOrUpdater) => {

@@ -1,4 +1,3 @@
-// Mock that simulates a server-side stream error via PostWebMessage
 const _listeners = [];
 
 const __mockBridge = {
@@ -20,11 +19,22 @@ const __mockBridge = {
     ExecutePromptAsync: async (prompt) => {
         setTimeout(() => {
             _listeners.forEach(fn => fn({
-                data: { Type: 'StreamError', Payload: 'model crashed' }
+                data: { Type: 'StreamThought', Payload: 'This is a thought', Count: 5, TokensPerSecond: 1.0 }
+            }));
+        }, 50);
+        setTimeout(() => {
+            _listeners.forEach(fn => fn({
+                data: { Type: 'StreamEnd' }
+            }));
+        }, 150);
+    },
+    StopExecutionAsync: async () => {
+        setTimeout(() => {
+            _listeners.forEach(fn => fn({
+                data: { Type: 'StreamEnd' }
             }));
         }, 50);
     },
-    StopExecutionAsync: async () => {},
     ResetHistoryAsync: async () => {},
     CopyToClipboardAsync: async (text) => true
 };

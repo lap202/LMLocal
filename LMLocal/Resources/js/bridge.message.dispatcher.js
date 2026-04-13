@@ -1,6 +1,12 @@
 import BridgeClient from './bridge.client.js';
 
-// Listen to webview messages and dispatch known types ('ChatChunk','ChatComplete','Error','CompactionStart','CompactionEnd') to AppManager.
+/**
+ * BridgeMessageDispatcher - binds a single listener to the host/webview `message`
+ * event and routes validated messages to the supplied `AppManager`.
+ * Usage:
+ *   BridgeMessageDispatcher.start(AppManager);
+ *   BridgeMessageDispatcher.stop();
+ */
 const BridgeMessageDispatcher = (() => {
     let isListening = false;
     let appManager = null;
@@ -14,7 +20,10 @@ const BridgeMessageDispatcher = (() => {
         appManager = manager;
 
         const webview = BridgeClient.getWebview();
-        if (!webview) return;
+        if (!webview) {
+            console.error('[BridgeMessageDispatcher] WebView is unavailable');
+            return;
+        }
 
         if (isListening) return;
 
@@ -39,13 +48,16 @@ const BridgeMessageDispatcher = (() => {
 
         const { Type, Payload, Count, TokensPerSecond } = event.data;
         switch (Type) {
-            case 'ChatChunk':
-                appManager.handleStreamChunk(Payload, Count, TokensPerSecond);
+            case 'StreamContent':
+                appManager.handleStreamContent(Payload, Count, TokensPerSecond);
                 break;
-            case 'ChatComplete':
+            case 'StreamThought':
+                appManager.handleStreamThought(Payload, Count, TokensPerSecond);
+                break;
+            case 'StreamEnd':
                 appManager.handleStreamEnd();
                 break;
-            case 'Error':
+            case 'StreamError':
                 if (String(Payload || '').toLowerCase().includes("disconnected")) {
                     appManager.onFatalError(Payload);
                 } else {

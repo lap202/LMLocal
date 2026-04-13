@@ -1,5 +1,14 @@
 import { MarkedRenderer, StreamingMarkdownRenderer, SimpleIncrementalRenderer, PlainTextRenderer } from './markdown.renderers.js';
 
+/**
+ * MessageRenderer - central abstraction for rendering message content.
+ *
+ * Responsibilities:
+ *  - Provide multiple renderer implementations (markdown, streaming, incremental, plain).
+ *  - Expose a stable API to switch renderer (`setRenderer`) and produce HTML (`render`).
+ *  - Run code highlighting on rendered output (`highlightCodeBlocks`) when a global `hljs` is present.
+ *  - Safely fall back to plain-escaped text when a renderer is not available.
+ */
 const MessageRenderer = (() => {
     let currentRenderer = null;
 

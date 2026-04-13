@@ -58,14 +58,14 @@ const __mockBridge = {
             if (i < chunks.length) {
                 // Send chunk
                 _listeners.forEach(fn => fn({
-                    data: { Type: 'ChatChunk', Payload: chunks[i], Count: i, TokensPerSecond: 100 }
+                    data: { Type: 'StreamContent', Payload: chunks[i], Count: i, TokensPerSecond: 100 }
                 }));
                 window.__streamingState.chunksSent = i + 1;
                 i++;
                 // Delay 1ms to allow browser to yield and UI to process the render event
                 setTimeout(sendNext, 1);
             } else {
-                _listeners.forEach(fn => fn({ data: { Type: 'ChatComplete' } }));
+                _listeners.forEach(fn => fn({ data: { Type: 'StreamEnd' } }));
                 window.__streamingState.isStreaming = false;
                 window.__streamingState.isComplete = true;
                 console.log(`Stream complete: sent ${window.__streamingState.chunksSent} chunks`);

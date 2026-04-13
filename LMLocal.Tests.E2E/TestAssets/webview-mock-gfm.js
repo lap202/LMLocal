@@ -1,4 +1,3 @@
-// Mock that simulates a server-side stream error via PostWebMessage
 const _listeners = [];
 
 const __mockBridge = {
@@ -18,13 +17,28 @@ const __mockBridge = {
         UsedTokens: 0
     }),
     ExecutePromptAsync: async (prompt) => {
+        // Send a single chunk containing GFM markdown. Escape backticks inside the template literal
+        const gfm = `# Heading 1\n## Heading 2\n\n- [x] Task done\n- [ ] Task not done\n\n| Col1 | Col2 |\n| --- | --- |\n| a | b |\n\nThis is ~~struck~~ text.\n\nVisit https://example.com\n\n\`\`\`js\nconsole.log('hi')\n\`\`\`\n\nSome *emphasis* and **strong**.`;
+
         setTimeout(() => {
             _listeners.forEach(fn => fn({
-                data: { Type: 'StreamError', Payload: 'model crashed' }
+                data: { Type: 'StreamContent', Payload: gfm, Count: 1, TokensPerSecond: 1.0 }
+            }));
+        }, 50);
+
+        setTimeout(() => {
+            _listeners.forEach(fn => fn({
+                data: { Type: 'StreamEnd' }
+            }));
+        }, 150);
+    },
+    StopExecutionAsync: async () => {
+        setTimeout(() => {
+            _listeners.forEach(fn => fn({
+                data: { Type: 'StreamEnd' }
             }));
         }, 50);
     },
-    StopExecutionAsync: async () => {},
     ResetHistoryAsync: async () => {},
     CopyToClipboardAsync: async (text) => true
 };
@@ -36,7 +50,7 @@ function __startMock() {
     } else {
         setTimeout(__startMock, 10);
     }
-}
+};
 
 if (document.readyState === 'complete') {
     __startMock();

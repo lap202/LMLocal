@@ -1,8 +1,16 @@
 import { AppStatus, UIText, CONFIG, AppSelectors } from './app.globals.js';
+import createCallback from './callback.js';
 
-
+/**
+ * StatusComponent - updates connection and generation status UI.
+ * Renders connection label, model name, token usage bar and speed,
+ * shows status text and exposes an `onRetry` callback for retry actions.
+ */
 const StatusComponent = (() => {
     let elements = {};
+    let retryHandler = null;
+    let totalTokens = 0;
+    const onRetry = createCallback();
 
     function getElements() {
         return {
@@ -11,6 +19,7 @@ const StatusComponent = (() => {
             modelName: document.getElementById('model-name'),
             separator: document.getElementById('status-separator'),
             tokenBarFill: document.getElementById('token-bar-fill'),
+            barInfoTooltip: document.getElementById('info-tooltip'),
             liveTokenCount: document.getElementById('live-token-count'),
             tokenCountText: document.getElementById('token-number'),
             tokensSpeed: document.getElementById('tokens-speed'),
@@ -32,7 +41,7 @@ const StatusComponent = (() => {
             connText = UIText.STATUS_OFFLINE;
             connClass = 'status-label offline';
         } else if ([
-            AppStatus.IDLE, AppStatus.PROCESSING, AppStatus.STREAMING,
+            AppStatus.IDLE, AppStatus.PROCESSING, AppStatus.STREAMING, AppStatus.THINKING,
             AppStatus.FINISHING, AppStatus.COMPACTING, AppStatus.STOPPING, AppStatus.ERROR
         ].includes(status)) {
             connText = UIText.STATUS_ONLINE;
@@ -67,9 +76,10 @@ const StatusComponent = (() => {
         const speed = state.tokenSpeed ?? 0;
         const max = state.tokenMax ?? CONFIG.MAX_TOKENS;
 
-        if (elements.tokenBarFill) {
-            const percent = max > 0 ? Math.min((used / max) * 100, 100) : 0;
+        if (elements.tokenBarFill && elements.barInfoTooltip && used !== prev?.tokenUsed) {
+            const percent = max > 0 ? Math.min((totalTokens / max) * 100, 100) : 0;
             elements.tokenBarFill.style.height = percent + "%";
+            elements.barInfoTooltip.title = `Context usage: ${Math.round(percent)}%`;
         }
         if (elements.liveTokenCount) {
             const isWorking = AppSelectors.isBusy(state);
@@ -78,7 +88,7 @@ const StatusComponent = (() => {
         if (elements.tokenCountText && used !== prev?.tokenUsed) {
             elements.tokenCountText.textContent = `${used} ${UIText.TEXT_TOKENS}`;
         }
-        if (elements.tokensSpeed) {
+        if (elements.tokensSpeed && speed !== prev?.tokenSpeed) {
             elements.tokensSpeed.textContent = speed > 0 ? `(${speed.toFixed(1)} ${UIText.TEXT_TOKENS_PER_SECOND})` : "";
         }
     }
@@ -108,21 +118,58 @@ const StatusComponent = (() => {
     }
 
     function updateGeneratingAnimation(state, prev) {
-        if (prev && AppSelectors.isTerminal(state) === AppSelectors.isTerminal(prev)) return;
-        const isTerminal = AppSelectors.isTerminal(state);
-        elements.statusBar.classList.toggle('generating', !isTerminal);
+        const isTerminalState = AppSelectors.isTerminal(state);
+        if (prev && isTerminalState === AppSelectors.isTerminal(prev)) return;
+
+        if (elements.statusBar) elements.statusBar.classList.toggle('generating', !isTerminalState);
+    }
+
+    async function onRetryClick(e) {
+        const btn = e.currentTarget;
+        btn.classList.add('retry-animate');
+        setTimeout(() => {
+            btn.classList.remove('retry-animate');
+        }, 500);
+        await onRetry.emit();
     }
 
     return {
         init() {
+            this.destroy();
+
             elements = getElements();
+            if (elements.retryBtn) {
+                retryHandler = onRetryClick;
+                elements.retryBtn.addEventListener('click', retryHandler);
+            }
             return this;
         },
+
         update(state, prev) {
+            if (state.status === AppStatus.CLEARING) {
+                totalTokens = 0;
+            } else {
+                const used = state.tokenUsed ?? 0;
+                const prevUsed = prev?.tokenUsed ?? 0;
+                if (used > prevUsed) {
+                    totalTokens += used - prevUsed;
+                }
+            }
+
             updateConnectionUI(state, prev);
             updateTokenStats(state, prev);
             updateStatusText(state, prev);
             updateGeneratingAnimation(state, prev);
+        },
+
+        onRetry,
+
+        destroy() {
+            if (elements.retryBtn && retryHandler) {
+                elements.retryBtn.removeEventListener('click', retryHandler);
+                retryHandler = null;
+            }
+            elements = {};
         }
     };
 })();

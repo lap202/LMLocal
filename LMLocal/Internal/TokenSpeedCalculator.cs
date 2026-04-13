@@ -6,20 +6,23 @@ namespace LMLocal.Internal
     /// <summary>
     /// Calculates token generation speed using a sliding time window.
     /// </summary>
-    internal class TokenSpeedCalculator
+    internal class TokenSpeedCalculator : ITokenSpeedCalculator
     {
         private readonly Queue<(long ticksUtc, int tokens)> _window = new Queue<(long, int)>();
         private readonly long _windowTicks;
         private int _currentTokens;
+        private readonly ITimeProvider _timeProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TokenSpeedCalculator"/> class.
         /// </summary>
         /// <param name="windowSeconds">The sliding window duration in seconds.</param>
-        public TokenSpeedCalculator(int windowSeconds = 5)
+        /// <param name="timeProvider">Optional time provider for deterministic tests.</param>
+        public TokenSpeedCalculator(int windowSeconds = 5, ITimeProvider timeProvider = null)
         {
+            _timeProvider = timeProvider ?? new SystemTimeProvider();
             _windowTicks = TimeSpan.FromSeconds(windowSeconds).Ticks;
-            _window.Enqueue((DateTime.UtcNow.Ticks, 0));
+            _window.Enqueue((_timeProvider.UtcNowTicks(), 0));
         }
 
         /// <summary>
@@ -31,7 +34,7 @@ namespace LMLocal.Internal
             if (totalTokens != _currentTokens)
             {
                 _currentTokens = totalTokens;
-                _window.Enqueue((DateTime.UtcNow.Ticks, totalTokens));
+                _window.Enqueue((_timeProvider.UtcNowTicks(), totalTokens));
             }
         }
 
@@ -41,7 +44,7 @@ namespace LMLocal.Internal
         /// <returns>Tokens per second.</returns>
         public double GetTokensPerSecond()
         {
-            long now = DateTime.UtcNow.Ticks;
+            long now = _timeProvider.UtcNowTicks();
             long cutoff = now - _windowTicks;
 
             // Remove outdated entries but keep at least one for delta calculation

@@ -27,11 +27,21 @@ LM Studio must have its local server enabled for the extension to connect. See t
 
 ## Installation
 
-1. Install the VSIX package.
-2. Restart Visual Studio if required.
-3. Start LM Studio.
-4. Enable the local server in LM Studio.
-5. Load a chat-capable model in LM Studio.
+Install the latest release of LMLocal from the Visual Studio Marketplace:
+
+- Visual Studio Marketplace: [LMLocal on Marketplace](https://marketplace.visualstudio.com/items?itemName=7gsocvrdqco5wtvsp3nuym3pxrwnwxxr7yuow4ymkl5of6epygaa.LMLocal)
+
+### Installation options:
+
+1. **From within Visual Studio**
+   - Open Visual Studio and go to `Extensions > Manage Extensions`.
+   - Select the `Online` tab, search for `LMLocal`, then install and restart Visual Studio when prompted.
+
+2. **Manual install via .vsix**
+   - Download the extension (.vsix) from the Marketplace page linked above.
+   - Double-click the downloaded `.vsix` and follow the Visual Studio Installer prompts to install.
+
+If you need help or want to report issues, open an issue in the repository or contact the maintainers.
 
 ## Getting Started
 
@@ -58,17 +68,6 @@ Make sure LM Studio is running and a model is loaded.
 - Restart LM Studio.
 - Reload the tool window in Visual Studio.
 
-### Responses do not stream
-
-Make sure the selected model in LM Studio supports chat completions and is fully loaded.
-
-### Webview host unreachable
-
-Ensure that the local server in LM Studio is running and accessible.
-
-### Missing dependencies
-
-Check that the required libraries `marked`, `streaming-markdown` and `highlight.js` are included in your project. Errors during streaming may indicate missing components.
 
 ## License
 

@@ -87,7 +87,7 @@ LMLocal.Tests.E2E\
 ?   ??? test-app.html     # single test page — mirrors app.html (no mock scripts inside)
 ?   ??? webview-mock.js           # mock: connected, SUCCESS response
 ?   ??? webview-mock-offline.js   # mock: disconnected, ERROR response
-?   ??? webview-mock-streaming.js # mock: fires ChatChunk + ChatComplete via postMessage
+?   ??? webview-mock-streaming.js # mock: fires StreamContent + StreamEnd via postMessage
 ??? MainWindowTests.cs            # UI tests for app.html
 ??? README.md
 ```

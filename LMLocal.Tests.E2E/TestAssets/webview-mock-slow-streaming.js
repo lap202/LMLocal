@@ -28,7 +28,7 @@ const __mockBridge = {
         // Stop triggers completion immediately
         setTimeout(() => {
             _listeners.forEach(fn => fn({
-                data: { Type: 'ChatComplete' }
+                data: { Type: 'StreamEnd' }
             }));
         }, 10);
     },

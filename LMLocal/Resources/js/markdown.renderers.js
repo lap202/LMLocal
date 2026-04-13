@@ -2,7 +2,7 @@
 
 marked.setOptions({
     gfm: true,   // Enable support for GitHub Flavored Markdown (GFM)
-    breaks: false // Disable line breaks with a single newline 
+    breaks: true // Disable line breaks with a single newline 
 });
 
 // Base class (optional) defining the interface for all Markdown → HTML converters.

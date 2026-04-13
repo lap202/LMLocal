@@ -44,6 +44,8 @@ namespace LMLocalBridgeNamespace
             });
             _lmStudioClient = new LMStudioClient(HttpClient);
             _chatService = new ChatGenerationService(_lmStudioClient, historyManager, compactor);
+
+            InternalLogger.Info("LMLocalBridge initialized");
         }
 
         /// <summary>
@@ -51,7 +53,7 @@ namespace LMLocalBridgeNamespace
         /// </summary>
         public async Task<string> GetStatusAsync()
         {
-            var result = new GetStatusReponse();
+            var result = new GetStatusResponse();
             try
             {
                 using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
@@ -84,7 +86,7 @@ namespace LMLocalBridgeNamespace
                     {
                         if (capabilities["reasoning"] is JObject reasoningToken)
                         {
-                            if (result.Reasoning == null) result.Reasoning = new GetStatusReponse.ReasoningInfo();
+                            if (result.Reasoning == null) result.Reasoning = new GetStatusResponse.ReasoningInfo();
                             result.Reasoning.Default = reasoningToken.Value<string>("default");
                             result.Reasoning.AllowedOptions = reasoningToken["allowed_options"]?.Values<string>()?.ToList() ?? new List<string>();
                         }
@@ -102,6 +104,7 @@ namespace LMLocalBridgeNamespace
             }
             catch (Exception ex)
             {
+                InternalLogger.Error("GetStatusAsync failed", ex);
                 result.Status = "ERROR";
                 result.ErrorMessage = "LM Studio unreachable: " + ex.Message;
             }
@@ -114,20 +117,31 @@ namespace LMLocalBridgeNamespace
         /// </summary>
         public async Task ExecutePromptAsync(string prompt)
         {
+            InternalLogger.Info($"ExecutePromptAsync start (len={prompt?.Length})");
             try
             {
                 await _chatService.GenerateStreamAsync(
                     prompt,
-                    onChunk: async (delta, stats) =>
+                    onChunk: async (streamChunk, stats) =>
                     {
+                        var msgType = streamChunk.Kind == ChunkKind.Reasoning
+                            ? WebView2MessageType.StreamThought
+                            : WebView2MessageType.StreamContent;
+
                         await _scriptExecutor.PostMessageAsJsonAsync(
-                            new WebView2ScriptMessageWithCount() { Type = WebView2MessageType.ChatChunk, Payload = delta, Count = stats.TotalTokens, TokensPerSecond = stats.TokensPerSecond }
-                        );
+                            new WebView2ScriptMessageWithCount()
+                            {
+                                Type = msgType,
+                                Payload = streamChunk.Text,
+                                Count = stats.TotalTokens,
+                                TokensPerSecond = stats.TokensPerSecond
+                            }
+                        ).ConfigureAwait(false);
                     },
                     onError: async (error) =>
                     {
                         await _scriptExecutor.PostMessageAsJsonAsync(
-                            new WebView2ScriptMessage() { Type = WebView2MessageType.Error, Payload = error }
+                            new WebView2ScriptMessage() { Type = WebView2MessageType.StreamError, Payload = error }
                         );
                     }
                 ).ConfigureAwait(false);
@@ -135,17 +149,19 @@ namespace LMLocalBridgeNamespace
             catch (OperationCanceledException)
             {
                 // Cancellation is expected — no error to report
+                InternalLogger.Info("ExecutePromptAsync canceled");
             }
             catch (Exception ex)
             {
+                InternalLogger.Error("ExecutePromptAsync failed", ex);
                 await _scriptExecutor.PostMessageAsJsonAsync(
-                    new WebView2ScriptMessage() { Type = WebView2MessageType.Error, Payload = ex.Message }
+                    new WebView2ScriptMessage() { Type = WebView2MessageType.StreamError, Payload = ex.Message }
                 );
             }
             finally
             {
                 await _scriptExecutor.PostMessageAsJsonAsync(
-                    new WebView2ScriptMessage() { Type = WebView2MessageType.ChatComplete, Payload = "" }
+                    new WebView2ScriptMessage() { Type = WebView2MessageType.StreamEnd, Payload = "" }
                 );
             }
         }
@@ -156,6 +172,7 @@ namespace LMLocalBridgeNamespace
         /// </summary>
         public Task<bool> ResetHistoryAsync()
         {
+            InternalLogger.Info("ResetHistoryAsync called");
             return Task.FromResult(_chatService.ResetHistory());
         }
 
@@ -164,6 +181,7 @@ namespace LMLocalBridgeNamespace
         /// </summary>
         public Task StopExecutionAsync()
         {
+            InternalLogger.Info("StopExecutionAsync called");
             _chatService.StopExecution();
             return Task.CompletedTask;
         }
@@ -180,8 +198,9 @@ namespace LMLocalBridgeNamespace
                 System.Windows.Clipboard.SetText(text);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                InternalLogger.Error("CopyToClipboardAsync failed", ex);
                 return false;
             }
         }

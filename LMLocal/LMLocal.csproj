@@ -68,13 +68,19 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Internal\BufferedFileLogger.cs" />
     <Compile Include="Internal\ChatGenerationService.cs" />
     <Compile Include="Internal\ChatHistoryManager.cs" />
     <Compile Include="Internal\HistoryCompactor.cs" />
+    <Compile Include="Internal\InternalLogger.cs" />
+    <Compile Include="Internal\ITimeProvider.cs" />
+    <Compile Include="Internal\ITokenSpeedCalculator.cs" />
     <Compile Include="Internal\LlmSseParser.cs" />
     <Compile Include="Internal\LMStudioClient.cs" />
     <Compile Include="Internal\MarkdownStripper.cs" />
+    <Compile Include="Internal\StreamChunk.cs" />
     <Compile Include="Internal\StreamProcessor.cs" />
+    <Compile Include="Internal\SystemTimeProvider.cs" />
     <Compile Include="Internal\TokenGenerationStats.cs" />
     <Compile Include="Internal\TokenSpeedCalculator.cs" />
     <Compile Include="Internal\WebView2ScriptExecutor.cs" />
@@ -122,6 +128,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="Resources\js\copy.buttons.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="Resources\js\highlight.min.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
@@ -138,7 +148,15 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="Resources\js\ai-message.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Compile Include="ShowMainWindow.cs" />
+    <Content Include="Resources\js\menu.component.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="Resources\js\message.renderer.js">
       <IncludeInVSIX>true</IncludeInVSIX>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -169,7 +187,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <None Include="README.md" />
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
