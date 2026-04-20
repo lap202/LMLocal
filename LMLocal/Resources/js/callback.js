@@ -1,26 +1,29 @@
 ﻿/*
  * Lightweight async callback helper. emit calls the registered handler and returns true unless the handler explicitly returns/fails with false.
  */
-export const createCallback = () => {
-    let fn = null;
+class Callback {
+    constructor() {
+        this._fn = null;
+    }
 
-    const api = {
+    on(callback) {
+        this._fn = typeof callback === 'function' ? callback : null;
+        return this;
+    }
 
-        on(callback) {
-            fn = typeof callback === 'function' ? callback : null;
-            return api;
-        },
-        async emit(...args) {
-            if (!fn) return true;
-            const result = fn(...args);
-            return (await result) !== false;
-        },
-        off() {
-            fn = null;
-        }
-    };
+    async emit(...args) {
+        if (!this._fn) return true;
+        const result = this._fn(...args);
+        return (await result) !== false;
+    }
 
-    return api;
-};
+    off() {
+        this._fn = null;
+    }
+}
 
-export default createCallback;
+export { Callback };
+
+export function createCallback() {
+    return new Callback();
+}

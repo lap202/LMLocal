@@ -99,7 +99,7 @@ namespace LMLocal.Tests.Unit.Internal
             public void Clear() { }
             public IReadOnlyList<ChatMessage> GetHistoryCopy() => new List<ChatMessage>();
             public void ReplaceHistory(string systemPrompt, string summary, IEnumerable<ChatMessage> recent) { }
-            public List<ChatMessage> BuildMessagesForRequest(string prompt) => new List<ChatMessage>();
+            public List<ChatMessage> BuildMessagesForRequest(string userPrompt, string includeContent = null) => new List<ChatMessage>();
         }
 
         private class DummyCompactor : IHistoryCompactor
@@ -119,7 +119,7 @@ namespace LMLocal.Tests.Unit.Internal
 
             var svc = new ChatGenerationService(client, history, compactor);
 
-            var genTask = svc.GenerateStreamAsync("hi", async (c, s) => { await Task.CompletedTask; }, async err => { await Task.CompletedTask; });
+            var genTask = svc.GenerateStreamAsync("hi", null, async (c, s) => { await Task.CompletedTask; }, async err => { await Task.CompletedTask; });
 
             // Give background work time to start
             await Task.Delay(50);
@@ -168,7 +168,7 @@ namespace LMLocal.Tests.Unit.Internal
         {
             // Corrected type to match BuildMessagesForRequest
             var messages = new List<ChatMessage>();
-            _historyMock.Setup(h => h.BuildMessagesForRequest(It.IsAny<string>())).Returns(messages);
+            _historyMock.Setup(h => h.BuildMessagesForRequest(It.IsAny<string>(), It.IsAny<string>())).Returns(messages);
 
             // Mock SendChatRequestAsync to return a StreamingResponse
             var mockStream = new MemoryStream();
@@ -188,7 +188,7 @@ namespace LMLocal.Tests.Unit.Internal
             Task onError(string s) => Task.CompletedTask;
 
             // The actual streaming and processing are not tested here (would require more setup)
-            await _service.GenerateStreamAsync("prompt", onChunk, onError);
+            await _service.GenerateStreamAsync("prompt", null, onChunk, onError);
 
             _historyMock.Verify(h => h.AddUserMessage("prompt"), Times.Once);
         }

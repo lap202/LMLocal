@@ -808,9 +808,13 @@ public partial class AppTests : PageTest
             .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
 
         // Clear action is now located in a dropdown menu. Open menu and click the clear button.
-        Page.Dialog += (_, d) => d.AcceptAsync();
         await Page.Locator("#menu-btn").ClickAsync();
         await Page.Locator("#dropdown-menu button[data-action=\"clear-chat\"]").ClickAsync();
+
+        // App now shows an in-page confirmation dialog. Click the confirm button to clear.
+        var confirmDialog = Page.Locator("#confirm-dialog");
+        await Expect(confirmDialog).ToBeVisibleAsync(new() { Timeout = 3000 });
+        await Page.Locator("#dialog-confirm").ClickAsync();
 
         // Chat container should be empty after clearing
         await Expect(Page.Locator("#chat-container > *")).ToHaveCountAsync(0);
@@ -829,10 +833,13 @@ public partial class AppTests : PageTest
         await Expect(Page.Locator("#status-text"))
             .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
 
-        // Clear action moved to dropdown menu; cancel the confirm dialog to keep messages
-        Page.Dialog += (_, d) => d.DismissAsync();
+        // Clear action moved to dropdown menu; cancel the in-page confirm dialog to keep messages
         await Page.Locator("#menu-btn").ClickAsync();
         await Page.Locator("#dropdown-menu button[data-action=\"clear-chat\"]").ClickAsync();
+
+        var confirmDialog = Page.Locator("#confirm-dialog");
+        await Expect(confirmDialog).ToBeVisibleAsync(new() { Timeout = 3000 });
+        await Page.Locator("#dialog-cancel").ClickAsync();
 
         await Expect(Page.Locator("#chat-container > *")).Not.ToHaveCountAsync(0);
     }

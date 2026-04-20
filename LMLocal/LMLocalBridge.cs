@@ -115,13 +115,14 @@ namespace LMLocalBridgeNamespace
         /// <summary>
         /// Executes the provided prompt against LM Studio and streams the response to WebView2.
         /// </summary>
-        public async Task ExecutePromptAsync(string prompt)
+        public async Task ExecutePromptAsync(string prompt, bool includeContent)
         {
             InternalLogger.Info($"ExecutePromptAsync start (len={prompt?.Length})");
             try
             {
                 await _chatService.GenerateStreamAsync(
                     prompt,
+                    includeContent: includeContent ? await new VsActiveWindow().GetContentAsync() : null,
                     onChunk: async (streamChunk, stats) =>
                     {
                         var msgType = streamChunk.Kind == ChunkKind.Reasoning

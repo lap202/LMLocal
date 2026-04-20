@@ -1,27 +1,49 @@
 /**
+/*
  * Thin wrapper around host bridge API.
  * Supports __bridgeOverride for tests.
  */
-const BridgeClient = (() => {
-    const getHost = () => window.__bridgeOverride ?? window.chrome?.webview?.hostObjects?.bridge;
-    const getWebview = () => window.__bridgeOverride?.__webview ?? window.chrome?.webview;
+class BridgeClient {
+    constructor() {
+        // nothing to init
+    }
 
-    const callHost = async (method, ...args) => {
-        const host = getHost();
+    _getHost() {
+        return window.__bridgeOverride ?? window.chrome?.webview?.hostObjects?.bridge;
+    }
+
+    getWebview() {
+        return window.__bridgeOverride?.__webview ?? window.chrome?.webview;
+    }
+
+    async _callHost(method, ...args) {
+        const host = this._getHost();
         if (!host || typeof host[method] !== 'function') {
             throw new Error(`Bridge host method ${method} is unavailable`);
         }
         return host[method](...args);
-    };
+    }
 
-    return {
-        getStatusAsync: async () => JSON.parse(await callHost("GetStatusAsync")),
-        executePromptAsync: async (prompt) => await callHost("ExecutePromptAsync", prompt),
-        stopExecutionAsync: async () => await callHost("StopExecutionAsync"),
-        resetHistoryAsync: async () => await callHost("ResetHistoryAsync"),
-        copyToClipboardAsync: async (text) => await callHost("CopyToClipboardAsync", text),
-        getWebview
-    };
-})();
+    async getStatusAsync() {
+        return JSON.parse(await this._callHost("GetStatusAsync"));
+    }
 
-export default BridgeClient
+    async executePromptAsync(prompt, includeContent) {
+        return await this._callHost("ExecutePromptAsync", prompt, includeContent);
+    }
+
+    async stopExecutionAsync() {
+        return await this._callHost("StopExecutionAsync");
+    }
+
+    async resetHistoryAsync() {
+        return await this._callHost("ResetHistoryAsync");
+    }
+
+    async copyToClipboardAsync(text) {
+        return await this._callHost("CopyToClipboardAsync", text);
+    }
+}
+
+const bridgeClient = new BridgeClient();
+export default bridgeClient;

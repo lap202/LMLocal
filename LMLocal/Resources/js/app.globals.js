@@ -1,9 +1,7 @@
 "use strict";
 
 /**
- * Shared application constants, UI text and lightweight AppStore.
- * Exported as an ES module so other modules (components) can import without
- * relying on globals and to avoid circular dependencies when separating files.
+ * Shared application constants, UI text.
  */
 
 export const AppStatus = {
@@ -57,10 +55,11 @@ export const Assets = {
     COPY_BUTTON_SVG: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`
 };
 
-export const CONFIG = {
+export const Config = {
     MAX_DISPLAYED_MESSAGES: 200,
-    RENDER_THROTTLE_MS: 60,
-    STREAM_BUFFER_INTERVAL_MS: 60,
+    RENDER_THROTTLE_MS: 90,
+    RENDER_BATCH_SIZE_WORDS:2,
+    STREAM_BUFFER_INTERVAL_MS: 100,
     USER_MESSAGE_COLLAPSE_CHAR_LIMIT: 500,
     USER_MESSAGE_COLLAPSE_LINES_LIMIT: 8,
     MAX_TOKENS: 16384,
@@ -68,67 +67,4 @@ export const CONFIG = {
     SCROLL_THRESHOLD_PX: 200
 };
 
-export const AppSelectors = {
-    isTerminal: (state) => [AppStatus.OFFLINE, AppStatus.IDLE, AppStatus.ERROR].includes(state.status),
-    // Busy if not IDLE (includes STOPPING, CONNECTING, OFFLINE, etc.)
-    isBusy: (state) => ![AppStatus.IDLE, AppStatus.ERROR].includes(state.status),
-    // Generating only during active token flow
-    isGenerating: (state) => [AppStatus.PROCESSING, AppStatus.THINKING, AppStatus.STREAMING].includes(state.status),
-    // Can send only when truly idle (implies online and if an error)
-    canSend: (state) => [AppStatus.IDLE, AppStatus.ERROR].includes(state.status)
-};
 
-// --- AppStore: Reactive Data Container ---
-export const AppStore = (() => {
-    let state = {
-        status: AppStatus.CONNECTING,
-        modelName: '',
-        tokenUsed: 0,
-        tokenMax: CONFIG.MAX_TOKENS,
-        tokenSpeed: 0,
-        error: null,
-        accumulatedText: "",
-        accumulatedThoughtText: "",
-        userMessage: ""
-    };
-
-    const listeners = new Set();
-
-    return {
-        getState: () => ({ ...state }),
-
-        subscribe: (fn) => {
-            if (typeof fn !== 'function') {
-                console.error('AppStore.subscribe: listener must be a function, received', fn);
-                return () => { };
-            }
-            listeners.add(fn);
-            return () => listeners.delete(fn);
-        },
-        // Explicit unsubscribe method for convenience. Removes a previously added listener.
-        unsubscribe: (fn) => {
-            if (typeof fn !== 'function') return false;
-            return listeners.delete(fn);
-        },
-
-        setState: (nextStateOrUpdater) => {
-            const prevState = state;
-            const updates = typeof nextStateOrUpdater === 'function'
-                ? nextStateOrUpdater(prevState)
-                : nextStateOrUpdater;
-
-            if (updates === null || typeof updates !== 'object') {
-                console.error('AppStore.setState: updates must be an object, received', updates);
-                return;
-            }
-
-            state = { ...prevState, ...updates };
-
-            const hasChanges = Object.keys(updates).some(key => prevState[key] !== updates[key]);
-
-            if (hasChanges) {
-                listeners.forEach(fn => fn(state, prevState));
-            }
-        }
-    };
-})();

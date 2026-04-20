@@ -7,55 +7,77 @@
  *  - Defensive: the implementation cancels pending RAFs on destroy and nulls the internal container reference.
  *  - The default `thresholdPx` controls how close to the bottom the container must be to be considered "stuck".
  */
-export const createScrollManager = (container, thresholdPx = 50) => {
-    let isStuckToBottom = true;
-    let scrollScheduled = false;
-    let rafId = null;
+class ScrollManager {
+    #container = null;
+    #thresholdPx = 50;
+    #isStuckToBottom = true;
+    #scrollScheduled = false;
+    #rafId = null;
 
-    const init = () => {
-        const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
-        isStuckToBottom = distanceFromBottom <= thresholdPx;
+    constructor(container, thresholdPx = 50) {
+        this.setup(container, thresholdPx);
+    }
+
+    setup(container, thresholdPx = 50) {
+        this.reset();
+        this.#container = container;
+        this.#thresholdPx = thresholdPx;
+        if (this.#container) {
+            this.#updateStuckState();
+            this._attachEvents();
+        }
+    }
+
+    reset() {
+        if (this.#rafId) {
+            cancelAnimationFrame(this.#rafId);
+            this.#rafId = null;
+        }
+        this.#scrollScheduled = false;
+        this._detachEvents();
+        this.#container = null;
+        this.#thresholdPx = 50;
+        this.#isStuckToBottom = true;
+    }
+
+    _attachEvents() {
+        if (this.#container) {
+            this.#container.addEventListener('scroll', this.#handleManualScroll, { passive: true });
+        }
+    }
+
+    _detachEvents() {
+        if (this.#container) {
+            this.#container.removeEventListener('scroll', this.#handleManualScroll);
+        }
+    }
+
+    #updateStuckState() {
+        if (!this.#container) return;
+        const distance = this.#container.scrollHeight - (this.#container.scrollTop + this.#container.clientHeight);
+        this.#isStuckToBottom = distance <= this.#thresholdPx;
+    }
+
+    #handleManualScroll = () => {
+        this.#updateStuckState();
     };
-    init();
 
-    const handleManualScroll = () => {
-        if (!container) return;
-
-        const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
-        isStuckToBottom = distanceFromBottom <= thresholdPx;
-    };
-
-    container.addEventListener('scroll', handleManualScroll, { passive: true });
-
-    const scrollToBottom = (force = false) => {
-        if (!container) return;
-
-
-        if (force || isStuckToBottom) {
-            if (scrollScheduled) return;
-
-            scrollScheduled = true;
-            rafId = requestAnimationFrame(() => {
-                container.scrollTop = container.scrollHeight;
-                scrollScheduled = false;
-                isStuckToBottom = true;
-                rafId = null;
+    scrollToBottom(force = false) {
+        if (!this.#container || this.#scrollScheduled) return;
+        if (force || this.#isStuckToBottom) {
+            if (force) this.#isStuckToBottom = true;
+            this.#scrollScheduled = true;
+            this.#rafId = requestAnimationFrame(() => {
+                if (this.#container) {
+                    this.#container.scrollTop = this.#container.scrollHeight;
+                    this.#isStuckToBottom = true;
+                }
+                this.#scrollScheduled = false;
+                this.#rafId = null;
             });
         }
-    };
+    }
+}
 
-    return {
-        scrollToBottom,
-        destroy: () => {
-            if (rafId != null) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-                scrollScheduled = false;
-            }
-            if (container) {
-                container.removeEventListener('scroll', handleManualScroll);
-                container = null;
-            }
-        }
-    };
-};
+export const createScrollManager = (container, threshold = 50) => new ScrollManager(container, threshold);
+

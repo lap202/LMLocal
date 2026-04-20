@@ -1,135 +1,140 @@
-import StatusComponent from './status.component.js';
-import InputComponent from './input.component.js';
-import ChatComponent from './chat.component.js';
-import AppManager from './app.manager.js';
-import { AppSelectors, AppStore } from './app.globals.js';
-import BridgeMessageDispatcher from './bridge.message.dispatcher.js';
-import MenuComponent from './menu.component.js';
-
+import statusComponent from './status.component.js';
+import inputComponent from './input.component.js';
+import chatController from './chat.controller.js';
+import appManager from './app.manager.js';
+import appStore, { appSelectors } from './app.store.js';
+import bridgeMessageDispatcher from './bridge.message.dispatcher.js';
+import menuComponent from './menu.component.js';
+import { Modal } from './modal.js';
+import { UIText } from './app.globals.js';
 /**
  * AppController - central initializer and event router.
  * Waits for required DOM elements, initializes UI components (Status, Input, Chat, Menu),
  * wires AppStore subscriptions and component event handlers, and starts the BridgeMessageDispatcher.
  * AppController only bootstraps and routes events, it does not handle streaming itself.
  */
-const AppController = (() => {
+class AppController {
+    constructor() {
+        this._initialized = false;
+        this._storeListener = null;
+        this._globalClickHandler = null;
+    }
 
-    let initialized = false;
-    let _storeListener = null;
-    let _globalClickHandler = null;
+    setup() {
+        if (this._initialized) return;
+        this.reset();
 
-    async function init() {
-        if (initialized) return;
+        statusComponent.setup();
+        inputComponent.setup();
+        chatController.setup();
+        menuComponent.setup();
 
-        // Ensure DOM is ready and required elements exist before initializing components.
-        // Centralized check here avoids adding the same guard inside every component.
-        const ensureDomAndElements = async (selectors = [], timeoutMs = 2000) => {
-            if (document.readyState === 'loading') {
-                await new Promise(resolve => window.addEventListener('DOMContentLoaded', resolve, { once: true }));
-            }
-            const start = Date.now();
-            const interval = 25;
-            while (Date.now() - start < timeoutMs) {
-                const allExist = selectors.every(s => !!document.querySelector(s));
-                if (allExist) return true;
-                await new Promise(r => setTimeout(r, interval));
-            }
-            return false;
+        this._attachEvents();
+
+        bridgeMessageDispatcher.start(appManager);
+
+        this._initialized = true;
+    }
+
+    reset() {
+        if (!this._initialized) return;
+
+        this._detachEvents();
+
+        bridgeMessageDispatcher.stop();
+
+        statusComponent.reset();
+        inputComponent.reset();
+        chatController.reset();
+        menuComponent.reset();
+
+        this._initialized = false;
+    }
+
+    _attachEvents() {
+        this._storeListener = (state, prev) => {
+            statusComponent.update(state, prev);
+            inputComponent.update(state, prev);
+            chatController.update(state, prev);
         };
+        appStore.subscribe(this._storeListener);
 
-        await ensureDomAndElements(['#userInput', '#mainBtn', '#chat-container', '#conn-status'], 100);
-
-        // 1. Initialize components (safe now that DOM elements are present)
-        StatusComponent.init();
-        InputComponent.init();
-        ChatComponent.init();
-        MenuComponent.init();
-
-        // 2. Subscribe to store for UI updates
-        _storeListener = (state, prev) => {
-            StatusComponent.update(state, prev);
-            InputComponent.update(state, prev);
-            ChatComponent.update(state, prev);
-        };
-        AppStore.subscribe(_storeListener);
-
-        // 3. Subscribe to InputComponent events
-        InputComponent.onClick.on(async (text) => {
-            const isGenerating = AppSelectors.isGenerating(AppStore.getState());
+        inputComponent.onClick.on(async (text, include) => {
+            const isGenerating = appSelectors.isGenerating(appStore.getState());
             if (isGenerating) {
-                AppStore.setState({ userMessage: text });
-                await AppManager.performStop();
-                return false; // do not clear the field
+                appStore.setState({ userMessage: text });
+                await appManager.performStop();
+                return false;
             } else if (text && text.trim()) {
-                await AppManager.performSendMessage(text);
-                return true; // clear the field
-            }
-            return false;
-        });
-
-        InputComponent.onEnter.on(async (text) => {
-            if (text && text.trim()) {
-                await AppManager.performSendMessage(text);
+                await appManager.performSendMessage(text, include);
                 return true;
             }
             return false;
         });
 
-        ChatComponent.onCopyCode.on(async (text) => {
-            return await AppManager.performCopyCode(text);
+        inputComponent.onEnter.on(async (text, include) => {
+            if (text && text.trim()) {
+                await appManager.performSendMessage(text, include);
+                return true;
+            }
+            return false;
         });
 
+        chatController.onCopyCode.on(async (text) => {
+            return await appManager.performCopyCode(text);
+        });
 
-        MenuComponent.onClick.on(async (action) => {
+        chatController.onHighlightCode.on(() => {
+            return appManager.handleHighlightingEnd();
+        });
+
+        menuComponent.onClick.on(async (action) => {
             switch (action) {
-                case "clear-chat":
-                    await AppManager.performClearChat();
+                case 'clear-chat':
+                    const modal = new Modal();
+                    const isConfirmed = await modal.confirm(UIText.CONFIRM_CLEAR_CONVERSATION);
+                    if (!isConfirmed) return false;
+                    await appManager.performClearChat();
                     return true;
                 default:
                     return false;
             }
         });
 
-        StatusComponent.onRetry.on(async () => {
-            await AppManager.onAppInit();
+        statusComponent.onRetry.on(async () => {
+            await appManager.onAppInit();
         });
 
-        // 4. Global handlers (menu)
-        _globalClickHandler = () => { MenuComponent.hideMenu(); };
-        window.addEventListener('click', _globalClickHandler);
-
-        BridgeMessageDispatcher.start(AppManager);
-
-        initialized = true;
+        this._globalClickHandler = () => {
+            menuComponent.hideMenu();
+        };
+        window.addEventListener('click', this._globalClickHandler);
     }
 
-    return {
-        init,
-        get initialized() { return initialized; },
-        destroy() {
-            // reverse initialization: remove handlers, unsubscribe, stop dispatcher and destroy components
-            if (!initialized) return;
-
-            if (_globalClickHandler) {
-                window.removeEventListener('click', _globalClickHandler);
-                _globalClickHandler = null;
-            }
-
-            if (_storeListener) {
-                AppStore.unsubscribe(_storeListener);
-                _storeListener = null;
-            }
-
-            BridgeMessageDispatcher.stop();
-
-            StatusComponent.destroy();
-            InputComponent.destroy();
-            ChatComponent.destroy();
-            MenuComponent.destroy();
-
-            initialized = false;
+    _detachEvents() {
+        if (this._storeListener) {
+            appStore.unsubscribe(this._storeListener);
+            this._storeListener = null;
         }
-    };
-})();
 
-export default AppController;
+        if (this._globalClickHandler) {
+            window.removeEventListener('click', this._globalClickHandler);
+            this._globalClickHandler = null;
+        }
+
+        inputComponent.onClick.off();
+        inputComponent.onEnter.off();
+        chatController.onCopyCode.off();
+        chatController.onHighlightCode.off();
+        menuComponent.onClick.off();
+        statusComponent.onRetry.off();
+    }
+
+    get initialized() {
+        return this._initialized;
+    }
+}
+
+const appController = new AppController();
+export default appController;
+

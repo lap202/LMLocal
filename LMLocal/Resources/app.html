@@ -46,13 +46,26 @@
     <div id="status-bar"><span id="status-icon"></span><span id="status-text" aria-live="polite">Ready</span><span id="live-token-count" style="margin-left: 10px; display: none;"><span id="token-number">0 tokens</span><span id="tokens-speed" style="margin-left: 5px; opacity: 0.6; font-size: 0.9em;"></span></span></div>
 
     <div class="input-container">
-        <textarea id="userInput" placeholder="Ask LMLocal..." rows="1" autofocus></textarea>
-        <button id="mainBtn">Send</button>
+        <div class="input-wrapper">
+            <textarea id="userInput" placeholder="Ask LMLocal..." rows="1" autofocus></textarea>
+            <div class="input-footer">
+                <button id="contextToggleBtn" class="btn-secondary" title="Include context from active window">
+                    <span class="icon">+</span>
+                </button>
+                <button id="mainBtn">Send</button>
+            </div>
+        </div>
     </div>
 
-    <script src="https://app.local/js/marked.min.js"></script>
-    <script type="module" src="https://app.local/js/smd.min.js"></script>
-    <script src="https://app.local/js/highlight.min.js"></script>
+    <dialog id="confirm-dialog">
+        <div class="modal-header">Confirmation</div>
+        <div class="modal-body"></div>
+        <div class="modal-footer">
+            <button id="dialog-cancel">Cancel</button>
+            <button id="dialog-confirm" class="btn-main">Clear</button>
+        </div>
+    </dialog>
+
     <script type="module" src="https://app.local/js/app.js"></script>
 </body>
 </html>

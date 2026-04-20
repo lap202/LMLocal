@@ -24,6 +24,7 @@ namespace LMLocal.Internal
         // NOTE: onChunk now receives StreamChunk so callers can distinguish reasoning vs content
         public async Task GenerateStreamAsync(
             string prompt,
+            string includeContent,
             Func<StreamChunk, TokenGenerationStats, Task> onChunk,
             Func<string, Task> onError)
         {
@@ -40,7 +41,7 @@ namespace LMLocal.Internal
                     currentCts = _currentCts;
                 }
 
-                var messages = _history.BuildMessagesForRequest(prompt);
+                var messages = _history.BuildMessagesForRequest(prompt, includeContent);
                 _history.AddUserMessage(prompt);
 
                 var processor = new StreamProcessor(onChunk, onError);

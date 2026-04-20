@@ -1,18 +1,23 @@
-import { AppStatus, UIText, CONFIG, AppSelectors } from './app.globals.js';
-import createCallback from './callback.js';
+import { AppStatus, UIText, Config } from './app.globals.js';
+import { appSelectors } from './app.store.js';
+import { createCallback } from './callback.js';
 
 /**
- * StatusComponent - updates connection and generation status UI.
- * Renders connection label, model name, token usage bar and speed,
- * shows status text and exposes an `onRetry` callback for retry actions.
- */
-const StatusComponent = (() => {
-    let elements = {};
-    let retryHandler = null;
-    let totalTokens = 0;
-    const onRetry = createCallback();
+ * StatusComponent
+ *
+ * UI component that displays application connection and token usage status.
+ * The component wires DOM elements, updates visual state from the application
+ * store, and exposes an `onRetry` callback for retrying connections.
+ **/
+class StatusComponent {
+    constructor() {
+        this.elements = {};
+        this.totalTokens = 0;
+        this.retryTimeout = null;
+        this.onRetry = createCallback();
+    }
 
-    function getElements() {
+    _getElements() {
         return {
             connStatus: document.getElementById('conn-status'),
             retryBtn: document.getElementById('retry-btn'),
@@ -28,150 +33,176 @@ const StatusComponent = (() => {
         };
     }
 
-    function updateConnectionUI(state, prev) {
+    _updateConnectionUI(state, prev) {
         if (prev && state.status === prev.status && state.modelName === prev.modelName) return;
 
         const status = state.status;
         let connText = '', connClass = '';
 
-        if (status === AppStatus.CONNECTING) {
-            connText = UIText.STATUS_CONNECTING;
-            connClass = 'status-label waiting';
-        } else if (status === AppStatus.OFFLINE) {
-            connText = UIText.STATUS_OFFLINE;
-            connClass = 'status-label offline';
-        } else if ([
-            AppStatus.IDLE, AppStatus.PROCESSING, AppStatus.STREAMING, AppStatus.THINKING,
-            AppStatus.FINISHING, AppStatus.COMPACTING, AppStatus.STOPPING, AppStatus.ERROR
-        ].includes(status)) {
-            connText = UIText.STATUS_ONLINE;
-            connClass = 'status-label online';
-        } else {
-            connText = UIText.STATUS_UNKNOWN;
-            connClass = 'status-label';
+        switch (status) {
+            case AppStatus.CONNECTING:
+                connText = UIText.STATUS_CONNECTING;
+                connClass = 'status-label waiting';
+                break;
+            case AppStatus.OFFLINE:
+                connText = UIText.STATUS_OFFLINE;
+                connClass = 'status-label offline';
+                break;
+            case AppStatus.IDLE:
+            case AppStatus.PROCESSING:
+            case AppStatus.STREAMING:
+            case AppStatus.THINKING:
+            case AppStatus.FINISHING:
+            case AppStatus.COMPACTING:
+            case AppStatus.STOPPING:
+            case AppStatus.ERROR:
+                connText = UIText.STATUS_ONLINE;
+                connClass = 'status-label online';
+                break;
+            default:
+                connText = UIText.STATUS_UNKNOWN;
+                connClass = 'status-label';
         }
 
-        if (elements.connStatus) {
-            elements.connStatus.textContent = connText;
-            elements.connStatus.className = connClass;
+        if (this.elements.connStatus) {
+            this.elements.connStatus.textContent = connText;
+            this.elements.connStatus.className = connClass;
         }
-        if (elements.retryBtn) {
-            elements.retryBtn.style.display = status === AppStatus.OFFLINE ? 'inline-block' : 'none';
+        if (this.elements.retryBtn) {
+            this.elements.retryBtn.style.display = status === AppStatus.OFFLINE ? 'inline-block' : 'none';
         }
 
         const showModel = !(status === AppStatus.CONNECTING || status === AppStatus.OFFLINE);
-        if (elements.modelName) {
-            elements.modelName.style.display = showModel ? 'inline' : 'none';
+        if (this.elements.modelName) {
+            this.elements.modelName.style.display = showModel ? 'inline' : 'none';
             if (showModel && state.modelName !== prev?.modelName) {
-                elements.modelName.textContent = state.modelName;
+                this.elements.modelName.textContent = state.modelName;
             }
         }
-        if (elements.separator) elements.separator.style.display = showModel ? 'inline' : 'none';
+        if (this.elements.separator) this.elements.separator.style.display = showModel ? 'inline' : 'none';
     }
 
-    function updateTokenStats(state, prev) {
+    _updateTokenStats(state, prev) {
         if (prev && state.tokenUsed === prev.tokenUsed && state.tokenSpeed === prev.tokenSpeed && state.tokenMax === prev.tokenMax) return;
 
         const used = state.tokenUsed ?? 0;
         const speed = state.tokenSpeed ?? 0;
-        const max = state.tokenMax ?? CONFIG.MAX_TOKENS;
+        const max = state.tokenMax ?? Config.MAX_TOKENS;
 
-        if (elements.tokenBarFill && elements.barInfoTooltip && used !== prev?.tokenUsed) {
-            const percent = max > 0 ? Math.min((totalTokens / max) * 100, 100) : 0;
-            elements.tokenBarFill.style.height = percent + "%";
-            elements.barInfoTooltip.title = `Context usage: ${Math.round(percent)}%`;
+        if (this.elements.tokenBarFill && this.elements.barInfoTooltip && used !== prev?.tokenUsed) {
+            const percent = max > 0 ? Math.min((this.totalTokens / max) * 100, 100) : 0;
+            this.elements.tokenBarFill.style.height = percent + "%";
+            this.elements.barInfoTooltip.title = `Context usage: ${Math.round(percent)}%`;
         }
-        if (elements.liveTokenCount) {
-            const isWorking = AppSelectors.isBusy(state);
-            elements.liveTokenCount.style.display = isWorking ? "inline" : "none";
+        if (this.elements.liveTokenCount) {
+            const isWorking = appSelectors.isBusy(state);
+            this.elements.liveTokenCount.style.display = isWorking ? "inline" : "none";
         }
-        if (elements.tokenCountText && used !== prev?.tokenUsed) {
-            elements.tokenCountText.textContent = `${used} ${UIText.TEXT_TOKENS}`;
+        if (this.elements.tokenCountText && used !== prev?.tokenUsed) {
+            this.elements.tokenCountText.textContent = `${used} ${UIText.TEXT_TOKENS}`;
         }
-        if (elements.tokensSpeed && speed !== prev?.tokenSpeed) {
-            elements.tokensSpeed.textContent = speed > 0 ? `(${speed.toFixed(1)} ${UIText.TEXT_TOKENS_PER_SECOND})` : "";
+        if (this.elements.tokensSpeed && speed !== prev?.tokenSpeed) {
+            this.elements.tokensSpeed.textContent = speed > 0 ? `(${speed.toFixed(1)} ${UIText.TEXT_TOKENS_PER_SECOND})` : "";
         }
     }
 
-    function updateStatusText(state, prev) {
+    _updateStatusText(state, prev) {
         if (prev && state.status === prev.status && state.error === prev.error) return;
 
-        if (state.status === AppStatus.ERROR) {
-            elements.statusText.textContent = state.error || UIText.STATUS_ERROR;
-            elements.statusText.classList.add('error');
-        } else if (state.status === AppStatus.OFFLINE && state.error) {
-            elements.statusText.textContent = state.error;
-            elements.statusText.classList.add('error');
-        } else if ([AppStatus.CONNECTING, AppStatus.OFFLINE].includes(state.status)) {
-            elements.statusText.textContent = '';
-            elements.statusText.classList.remove('error');
-        } else if (state.status === AppStatus.CLEARING) {
-            elements.statusText.textContent = UIText.STATUS_CLEARING;
-            elements.statusText.classList.remove('error');
-        } else {
-            elements.statusText.classList.remove('error');
-            const label = UIText[`STATUS_${state.status}`] || UIText.STATUS_UNKNOWN;
-            if (label !== elements.statusText.textContent) {
-                elements.statusText.textContent = label;
-            }
+        const status = state.status;
+        this.elements.statusText.classList.remove('error');
+
+        switch (status) {
+            case AppStatus.ERROR:
+                this.elements.statusText.textContent = state.error || UIText.STATUS_ERROR;
+                this.elements.statusText.classList.add('error');
+                break;
+            case AppStatus.OFFLINE:
+                if (state.error) {
+                    this.elements.statusText.textContent = state.error;
+                    this.elements.statusText.classList.add('error');
+                } else {
+                    this.elements.statusText.textContent = '';
+                }
+                break;
+            case AppStatus.CONNECTING:
+                this.elements.statusText.textContent = '';
+                break;
+            case AppStatus.CLEARING:
+                this.elements.statusText.textContent = UIText.STATUS_CLEARING;
+                break;
+            default:
+                const label = UIText[`STATUS_${status}`] || UIText.STATUS_UNKNOWN;
+                if (label !== this.elements.statusText.textContent) {
+                    this.elements.statusText.textContent = label;
+                }
         }
     }
 
-    function updateGeneratingAnimation(state, prev) {
-        const isTerminalState = AppSelectors.isTerminal(state);
-        if (prev && isTerminalState === AppSelectors.isTerminal(prev)) return;
+    _updateGeneratingAnimation(state, prev) {
+        const isTerminalState = appSelectors.isTerminal(state);
+        if (prev && isTerminalState === appSelectors.isTerminal(prev)) return;
 
-        if (elements.statusBar) elements.statusBar.classList.toggle('generating', !isTerminalState);
+        if (this.elements.statusBar) this.elements.statusBar.classList.toggle('generating', !isTerminalState);
     }
 
-    async function onRetryClick(e) {
+    _onRetryClick = async (e) => {
+        if (this.retryTimeout) clearTimeout(this.retryTimeout);
         const btn = e.currentTarget;
         btn.classList.add('retry-animate');
-        setTimeout(() => {
-            btn.classList.remove('retry-animate');
+        this.retryTimeout = setTimeout(() => {
+            if (btn) btn.classList.remove('retry-animate');
+            this.retryTimeout = null;
         }, 500);
-        await onRetry.emit();
+        await this.onRetry.emit();
+    };
+
+    _attachEvents() {
+        if (this.elements.retryBtn) {
+            this.elements.retryBtn.addEventListener('click', this._onRetryClick);
+        }
     }
 
-    return {
-        init() {
-            this.destroy();
-
-            elements = getElements();
-            if (elements.retryBtn) {
-                retryHandler = onRetryClick;
-                elements.retryBtn.addEventListener('click', retryHandler);
-            }
-            return this;
-        },
-
-        update(state, prev) {
-            if (state.status === AppStatus.CLEARING) {
-                totalTokens = 0;
-            } else {
-                const used = state.tokenUsed ?? 0;
-                const prevUsed = prev?.tokenUsed ?? 0;
-                if (used > prevUsed) {
-                    totalTokens += used - prevUsed;
-                }
-            }
-
-            updateConnectionUI(state, prev);
-            updateTokenStats(state, prev);
-            updateStatusText(state, prev);
-            updateGeneratingAnimation(state, prev);
-        },
-
-        onRetry,
-
-        destroy() {
-            if (elements.retryBtn && retryHandler) {
-                elements.retryBtn.removeEventListener('click', retryHandler);
-                retryHandler = null;
-            }
-            elements = {};
+    _detachEvents() {
+        if (this.elements.retryBtn) {
+            this.elements.retryBtn.removeEventListener('click', this._onRetryClick);
         }
-    };
-})();
+    }
 
-export default StatusComponent;
+    setup() {
+        this.reset();
+        this.elements = this._getElements();
+        this._attachEvents();
+        return this;
+    }
+
+    reset() {
+        this._detachEvents();
+        if (this.retryTimeout) {
+            clearTimeout(this.retryTimeout);
+            this.retryTimeout = null;
+        }
+        this.elements = {};
+        this.totalTokens = 0;
+    }
+
+    update(state, prev) {
+        if (state.status === AppStatus.CLEARING) {
+            this.totalTokens = 0;
+        } else {
+            const used = state.tokenUsed ?? 0;
+            const prevUsed = prev?.tokenUsed ?? 0;
+            if (used > prevUsed) {
+                this.totalTokens += used - prevUsed;
+            }
+        }
+
+        this._updateConnectionUI(state, prev);
+        this._updateTokenStats(state, prev);
+        this._updateStatusText(state, prev);
+        this._updateGeneratingAnimation(state, prev);
+    }
+}
+
+const statusComponent = new StatusComponent();
+export default statusComponent;

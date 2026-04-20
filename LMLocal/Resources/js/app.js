@@ -1,27 +1,15 @@
 "use strict";
 
-import AppManager from './app.manager.js';
-import AppController from './app.controller.js';
-import MessageRenderer from './message.renderer.js';
+import appManager from './app.manager.js';
+import appController from './app.controller.js';
 
 window.lmInit = async () => {
     try {
-        if (typeof AppController.init === 'function' && !AppController.initialized) {
-            // Call init if it hasn't been called yet (for tests, for example)
-            await AppController.init();
+        if (!appController.initialized) {
+            // Call setup if it hasn't been called yet (for tests, for example)
+            await appController.setup();
         }
-        await AppManager.onAppInit();
-
-        /* Choose the Markdown renderer for message content.
-           Options:
-             - MessageRenderer.RendererType.MARKED
-               Renders the complete Markdown after the message finishes.
-             - MessageRenderer.RendererType.STREAMING_MARKDOWN
-               Renders Markdown progressively as content arrives (useful for streaming responses / low-latency UX).
-           Default here is STREAMING_MARKDOWN to enable incremental rendering of streamed messages.
-        */
-
-        MessageRenderer.setRenderer(MessageRenderer.RendererType.MARKED);
+        await appManager.onAppInit();
 
     } catch (error) {
         console.error('Error during app initialization:', error);

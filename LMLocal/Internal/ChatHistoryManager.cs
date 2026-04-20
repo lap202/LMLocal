@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace LMLocal.Internal
@@ -10,7 +10,7 @@ namespace LMLocal.Internal
         void Clear();
         IReadOnlyList<ChatMessage> GetHistoryCopy();
         void ReplaceHistory(string systemPrompt, string summary, IEnumerable<ChatMessage> recent);
-        List<ChatMessage> BuildMessagesForRequest(string userPrompt);
+        List<ChatMessage> BuildMessagesForRequest(string userPrompt, string includedContent = null);
     }
 
     internal class ChatHistoryManager : IChatHistoryManager
@@ -68,17 +68,28 @@ namespace LMLocal.Internal
             }
         }
 
-        public List<ChatMessage> BuildMessagesForRequest(string userPrompt)
+        public List<ChatMessage> BuildMessagesForRequest(string userPrompt, string includedContent = null)
         {
             var messages = new List<ChatMessage>();
             lock (_lock)
             {
-                if (_history.Count == 0)
+                if (_history.Count == 0) {
                     messages.Add(new ChatMessage("system", _systemPrompt));
+                }
+                
                 messages.AddRange(_history);
+            }
+            if (!string.IsNullOrEmpty(includedContent))
+            {
+                messages.Add(new ChatMessage("user", FormatIncludedContent(includedContent)));
             }
             messages.Add(new ChatMessage("user", userPrompt));
             return messages;
+        }
+
+        private static string FormatIncludedContent(string content)
+        {
+            return $"Here is some additional information that may be relevant to the user's question:\n\n{content}";
         }
     }
 }

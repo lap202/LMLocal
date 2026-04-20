@@ -1,47 +1,49 @@
-import BridgeClient from './bridge.client.js';
+import bridgeClient from './bridge.client.js';
 
 /**
  * BridgeMessageDispatcher - binds a single listener to the host/webview `message`
  * event and routes validated messages to the supplied `AppManager`.
- * Usage:
- *   BridgeMessageDispatcher.start(AppManager);
- *   BridgeMessageDispatcher.stop();
+ * Converted to class with singleton `bridgeMessageDispatcher`.
  */
-const BridgeMessageDispatcher = (() => {
-    let isListening = false;
-    let appManager = null;
+class BridgeMessageDispatcher {
+    constructor() {
+        this.isListening = false;
+        this.appManager = null;
 
-    function start(manager) {
+        this._onMessage = this._onMessage.bind(this);
+    }
+
+    start(manager) {
         if (!manager) {
             console.error('[BridgeMessageDispatcher] AppManager is required');
             return;
         }
 
-        appManager = manager;
+        this.appManager = manager;
 
-        const webview = BridgeClient.getWebview();
+        const webview = bridgeClient.getWebview();
         if (!webview) {
             console.error('[BridgeMessageDispatcher] WebView is unavailable');
             return;
         }
 
-        if (isListening) return;
+        if (this.isListening) return;
 
-        webview.addEventListener('message', onMessage);
-        isListening = true;
+        webview.addEventListener('message', this._onMessage);
+        this.isListening = true;
     }
 
-    function stop() {
-        const webview = BridgeClient.getWebview();
-        if (webview && isListening) {
-            webview.removeEventListener('message', onMessage);
-            isListening = false;
+    stop() {
+        const webview = bridgeClient.getWebview();
+        if (webview && this.isListening) {
+            webview.removeEventListener('message', this._onMessage);
+            this.isListening = false;
         }
-        appManager = null;
+        this.appManager = null;
     }
 
-    function onMessage(event) {
-        if (!appManager) {
+    _onMessage(event) {
+        if (!this.appManager) {
             console.warn('[BridgeMessageDispatcher] No AppManager, ignoring message');
             return;
         }
@@ -49,33 +51,32 @@ const BridgeMessageDispatcher = (() => {
         const { Type, Payload, Count, TokensPerSecond } = event.data;
         switch (Type) {
             case 'StreamContent':
-                appManager.handleStreamContent(Payload, Count, TokensPerSecond);
+                this.appManager.handleStreamContent(Payload, Count, TokensPerSecond);
                 break;
             case 'StreamThought':
-                appManager.handleStreamThought(Payload, Count, TokensPerSecond);
+                this.appManager.handleStreamThought(Payload, Count, TokensPerSecond);
                 break;
             case 'StreamEnd':
-                appManager.handleStreamEnd();
+                this.appManager.handleStreamEnd();
                 break;
             case 'StreamError':
                 if (String(Payload || '').toLowerCase().includes("disconnected")) {
-                    appManager.onFatalError(Payload);
+                    this.appManager.onFatalError(Payload);
                 } else {
-                    appManager.handleStreamError(Payload);
+                    this.appManager.handleStreamError(Payload);
                 }
                 break;
             case 'CompactionStart':
-                appManager.onCompactionStart();
+                this.appManager.onCompactionStart();
                 break;
             case 'CompactionEnd':
-                appManager.onCompactionEnd();
+                this.appManager.onCompactionEnd();
                 break;
             default:
                 console.warn('[BridgeMessageDispatcher] Unknown message type:', Type);
         }
     }
+}
 
-    return { start, stop };
-})();
-
-export default BridgeMessageDispatcher
+const bridgeMessageDispatcher = new BridgeMessageDispatcher();
+export default bridgeMessageDispatcher;

@@ -1,73 +1,77 @@
-import createCallback from './callback.js';
-
+import { createCallback }  from './callback.js';
 /**
- * MenuComponent - handles dropdown menu UI and actions.
- * Manages menu button and dropdown event handlers, exposes an `onClick` callback
- * that emits menu action identifiers to callers and provides `hideMenu`/`destroy` helpers.
- */
-const MenuComponent = (() => {
-    let elements = {};
-    const onClick = createCallback();
+ * Lightweight component that manages a simple dropdown menu controlled by a
+ * menu button. The component wires DOM elements, attaches event handlers and
+ * exposes a callback-based `onClick` hook for menu actions.
+ **/
+class MenuComponent {
+    constructor() {
+        this.elements = {};
+        this.onClick = createCallback();
+    }
 
-    function getElements() {
+    _getElements() {
         return {
             menuBtn: document.getElementById('menu-btn'),
             dropDownMenu: document.getElementById('dropdown-menu')
         };
     }
 
-    function toggleMenu() {
-        if (elements.dropDownMenu) {
-            elements.dropDownMenu.classList.toggle('show');
+    _toggleMenu = () => {
+        if (this.elements.dropDownMenu) {
+            this.elements.dropDownMenu.classList.toggle('show');
         }
-    }
+    };
 
-    function hideMenu() {
-        if (elements.dropDownMenu && elements.dropDownMenu.classList.contains('show')) {
-            elements.dropDownMenu.classList.remove('show');
+    hideMenu = () => {
+        if (this.elements.dropDownMenu && this.elements.dropDownMenu.classList.contains('show')) {
+            this.elements.dropDownMenu.classList.remove('show');
         }
-    }
+    };
 
-    function handleMenuBtnClick(e) {
+    _handleMenuBtnClick = (e) => {
         e.stopPropagation();
-        toggleMenu();
-    }
+        this._toggleMenu();
+    };
 
-    async function handleDropdownClick(e) {
+    _handleDropdownClick = async (e) => {
         e.stopPropagation();
         const button = e.target.closest('button');
         if (!button) return;
         const action = button.dataset.action;
-        if (await onClick.emit(action)) {
-            hideMenu();
+        if (await this.onClick.emit(action)) {
+            this.hideMenu();
+        }
+    };
+
+    _attachEvents() {
+        if (this.elements.menuBtn && this.elements.dropDownMenu) {
+            this.elements.menuBtn.addEventListener('click', this._handleMenuBtnClick);
+            this.elements.dropDownMenu.addEventListener('click', this._handleDropdownClick);
         }
     }
 
-    return {
-        init() {
-            this.destroy();
-
-            elements = getElements();
-            if (elements.menuBtn && elements.dropDownMenu) {
-                elements.menuBtn.addEventListener('click', handleMenuBtnClick);
-                elements.dropDownMenu.addEventListener('click', handleDropdownClick);
-            }
-            return this;
-        },
-
-        hideMenu,
-        onClick,
-
-        destroy() {
-            if (elements.menuBtn) {
-                elements.menuBtn.removeEventListener('click', handleMenuBtnClick);
-            }
-            if (elements.dropDownMenu) {
-                elements.dropDownMenu.removeEventListener('click', handleDropdownClick);
-            }
-            elements = {};
+    _detachEvents() {
+        if (this.elements.menuBtn) {
+            this.elements.menuBtn.removeEventListener('click', this._handleMenuBtnClick);
         }
-    };
-})();
+        if (this.elements.dropDownMenu) {
+            this.elements.dropDownMenu.removeEventListener('click', this._handleDropdownClick);
+        }
+    }
 
-export default MenuComponent;
+    setup() {
+        this.reset();
+        this.elements = this._getElements();
+        this._attachEvents();
+        return this;
+    }
+
+    reset() {
+        this._detachEvents();
+        this.elements = {};
+    }
+}
+
+const menuComponent = new MenuComponent();
+export default menuComponent;
