@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using LMLocal.Internal;
+using LMLocal.Infrastructure;
+using LMLocal.Services;
+using LMLocal.Models;
+using LMLocal.Infrastructure.Lm;
 using Moq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
+using LMLocal.Infrastructure.Lm.Responses;
 
 namespace LMLocal.Tests.Unit.Internal
 {
@@ -27,7 +31,7 @@ namespace LMLocal.Tests.Unit.Internal
             _service = new ChatGenerationService(_clientMock.Object, _historyMock.Object, _compactorMock.Object);
         }
 
-        // --- Additional unit test to verify cancellation/stop behavior using a blocking stream ---
+
         private class BlockingStream : Stream
         {
             private readonly SemaphoreSlim _sem = new SemaphoreSlim(0, 1);
@@ -52,7 +56,6 @@ namespace LMLocal.Tests.Unit.Internal
                     throw;
                 }
 
-                // signal EOF
                 return 0;
             }
 
@@ -78,9 +81,10 @@ namespace LMLocal.Tests.Unit.Internal
             private readonly Stream _stream;
             public FakeClient(Stream s) => _stream = s;
 
-            public Task<JObject> GetModelsAsync(CancellationToken cancellationToken) => Task.FromResult(new JObject());
+            public Task<ListModelsResponse> ListModelsAsync(CancellationToken cancellationToken) 
+                => Task.FromResult(new ListModelsResponse());
 
-            public Task<StreamingResponse> SendChatRequestAsync(IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken)
+            public Task<StreamingResponse> SendChatStreamingAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken)
             {
                 var response = new System.Net.Http.HttpResponseMessage();
                 var request = new System.Net.Http.HttpRequestMessage();
@@ -89,7 +93,8 @@ namespace LMLocal.Tests.Unit.Internal
                 return Task.FromResult(streaming);
             }
 
-            public Task<string> SendNonStreamingAsync(IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken) => Task.FromResult<string>(null);
+            public Task<SendChatResponse> SendChatAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken) 
+                => Task.FromResult<SendChatResponse>(null);
         }
 
         private class DummyHistory : IChatHistoryManager
@@ -98,13 +103,13 @@ namespace LMLocal.Tests.Unit.Internal
             public void AddAssistantMessage(string text) { }
             public void Clear() { }
             public IReadOnlyList<ChatMessage> GetHistoryCopy() => new List<ChatMessage>();
-            public void ReplaceHistory(string systemPrompt, string summary, IEnumerable<ChatMessage> recent) { }
-            public List<ChatMessage> BuildMessagesForRequest(string userPrompt, string includeContent = null) => new List<ChatMessage>();
+            public bool ReplaceHistory(string summary, IEnumerable<ChatMessage> recent, int expectedSize) => true;
+            public List<ChatMessage> BuildUserMessagesWithHistory(string userPrompt, string includedContent = null, string additionalSystemPrompt = null) => new List<ChatMessage>();
         }
 
         private class DummyCompactor : IHistoryCompactor
         {
-            public Task CompactIfNeededAsync(ILMStudioClient client, CancellationToken token) => Task.CompletedTask;
+            public Task CompactIfNeededAsync(ILMStudioClient client, string modelId, CancellationToken token) => Task.CompletedTask;
             public void SetMaxContext(int max) { }
             public bool NeedsCompaction() => false;
         }
@@ -119,27 +124,31 @@ namespace LMLocal.Tests.Unit.Internal
 
             var svc = new ChatGenerationService(client, history, compactor);
 
-            var genTask = svc.GenerateStreamAsync("hi", null, async (c, s) => { await Task.CompletedTask; }, async err => { await Task.CompletedTask; });
+            var context = new GenerateStreamContext
+            {
+                Prompt = "hi",
+                ActiveDocumentContent = null,
+                AdditionalPrompt = "stop_extra",
+                ModelId = null
+            };
 
-            // Give background work time to start
+            var genTask = svc.GenerateStreamAsync(context, async (c, s) => { await Task.CompletedTask; }, async err => { await Task.CompletedTask; }, async () => { await Task.CompletedTask; });
+
             await Task.Delay(50);
 
-            // Request stop
             svc.StopExecution();
 
-            // Unblock stream so reader can observe cancellation/EOF
             blocking.ReleaseAndClose();
 
-            // Wait for completion with timeout
             var completed = await Task.WhenAny(genTask, Task.Delay(3000)) == genTask;
             Assert.That(completed, Is.True, "GenerateStreamAsync should complete after StopExecution");
             Assert.That(genTask.IsFaulted, Is.False, genTask.Exception?.ToString());
         }
 
         [Test]
-        public void ResetHistory_ReturnsTrue_WhenNoActiveGeneration()
+        public async Task ResetHistory_ReturnsTrue_WhenNoActiveGeneration()
         {
-            var result = _service.ResetHistory();
+            var result = await _service.ResetHistoryAsync();
             Assert.That(result, Is.True);
             _historyMock.Verify(h => h.Clear(), Times.Once);
         }
@@ -154,7 +163,6 @@ namespace LMLocal.Tests.Unit.Internal
         [Test]
         public void StopExecution_CancelsAndDisposesToken()
         {
-            // Start a generation to set a token
             var cts = new CancellationTokenSource();
             typeof(ChatGenerationService)
                 .GetField("_currentCts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
@@ -166,29 +174,33 @@ namespace LMLocal.Tests.Unit.Internal
         [Test]
         public async Task GenerateStreamAsync_AddsUserMessage_AndAssistantMessage()
         {
-            // Corrected type to match BuildMessagesForRequest
             var messages = new List<ChatMessage>();
-            _historyMock.Setup(h => h.BuildMessagesForRequest(It.IsAny<string>(), It.IsAny<string>())).Returns(messages);
+            _historyMock.Setup(h => h.BuildUserMessagesWithHistory(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(messages);
 
-            // Mock SendChatRequestAsync to return a StreamingResponse
             var mockStream = new MemoryStream();
             var mockResponse = new System.Net.Http.HttpResponseMessage();
             var mockRequest = new System.Net.Http.HttpRequestMessage();
             var mockContent = new System.Net.Http.StringContent("");
             var streamingResponse = new StreamingResponse(mockStream, mockResponse, mockRequest, mockContent);
-            _clientMock.Setup(c => c.SendChatRequestAsync(It.IsAny<IReadOnlyList<ChatMessage>>(), It.IsAny<CancellationToken>()))
+            _clientMock.Setup(c => c.SendChatStreamingAsync(It.IsAny<MessageContext>(), It.IsAny<ModelContext>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(streamingResponse);
 
             _historyMock.Setup(h => h.AddUserMessage(It.IsAny<string>()));
             _historyMock.Setup(h => h.AddAssistantMessage(It.IsAny<string>()));
-            _compactorMock.Setup(c => c.CompactIfNeededAsync(_clientMock.Object, CancellationToken.None)).Returns(Task.CompletedTask);
+            _compactorMock.Setup(c => c.CompactIfNeededAsync(_clientMock.Object, It.IsAny<string>(), CancellationToken.None)).Returns(Task.CompletedTask);
 
-            // Use a dummy processor — match signature: StreamChunk, TokenGenerationStats
             Task onChunk(StreamChunk chunk, TokenGenerationStats t) => Task.CompletedTask;
             Task onError(string s) => Task.CompletedTask;
 
-            // The actual streaming and processing are not tested here (would require more setup)
-            await _service.GenerateStreamAsync("prompt", null, onChunk, onError);
+            var context = new GenerateStreamContext
+            {
+                Prompt = "prompt",
+                ActiveDocumentContent = null,
+                AdditionalPrompt = "extra",
+                ModelId = null
+            };
+
+            await _service.GenerateStreamAsync(context, onChunk, onError, async () => { await Task.CompletedTask; });
 
             _historyMock.Verify(h => h.AddUserMessage("prompt"), Times.Once);
         }

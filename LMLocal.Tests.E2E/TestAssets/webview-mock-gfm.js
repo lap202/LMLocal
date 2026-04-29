@@ -16,8 +16,7 @@ const __mockBridge = {
         MaxContext: 16384,
         UsedTokens: 0
     }),
-    ExecutePromptAsync: async (prompt) => {
-        // Send a single chunk containing GFM markdown. Escape backticks inside the template literal
+    ExecutePromptAsync: async (requestJson) => {
         const gfm = `# Heading 1\n## Heading 2\n\n- [x] Task done\n- [ ] Task not done\n\n| Col1 | Col2 |\n| --- | --- |\n| a | b |\n\nThis is ~~struck~~ text.\n\nVisit https://example.com\n\n\`\`\`js\nconsole.log('hi')\n\`\`\`\n\nSome *emphasis* and **strong**.`;
 
         setTimeout(() => {
@@ -40,7 +39,23 @@ const __mockBridge = {
         }, 50);
     },
     ResetHistoryAsync: async () => {},
-    CopyToClipboardAsync: async (text) => true
+    CopyToClipboardAsync: async (text) => true,
+    GetInstructionsAsync: async () => {
+        console.log('[mock] GetInstructionsAsync called');
+        return JSON.stringify({ tabs: [] });
+    },
+    UpdateInstructionsAsync: async (json) => {
+        console.log('[mock] UpdateInstructionsAsync called');
+        return true;
+    },
+    GetSettingsAsync: async () => {
+        console.log('[mock] GetSettingsAsync called');
+        return JSON.stringify({});
+    },
+    UpdateSettingsAsync: async (json) => {
+        console.log('[mock] UpdateSettingsAsync called');
+        return true;
+    }
 };
 
 function __startMock() {

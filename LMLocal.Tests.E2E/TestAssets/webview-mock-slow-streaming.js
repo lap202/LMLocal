@@ -17,11 +17,8 @@ const __mockBridge = {
         MaxContext: 16384,
         UsedTokens: 0
     }),
-    ExecutePromptAsync: async (prompt) => {
-        // Just delay, simulating network latency, so skeleton remains visible
+    ExecutePromptAsync: async (requestJson) => {
         setTimeout(() => {
-            // we won't even send the initial chunk for this test
-            // this mimics cancellation during the 'thinking' phase
         }, 50);
     },
     StopExecutionAsync: async () => {
@@ -33,7 +30,23 @@ const __mockBridge = {
         }, 10);
     },
     ResetHistoryAsync: async () => {},
-    CopyToClipboardAsync: async (text) => true
+    CopyToClipboardAsync: async (text) => true,
+    GetInstructionsAsync: async () => {
+        console.log('[mock] GetInstructionsAsync called');
+        return JSON.stringify({ tabs: [] });
+    },
+    UpdateInstructionsAsync: async (json) => {
+        console.log('[mock] UpdateInstructionsAsync called');
+        return true;
+    },
+    GetSettingsAsync: async () => {
+        console.log('[mock] GetSettingsAsync called');
+        return JSON.stringify({});
+    },
+    UpdateSettingsAsync: async (json) => {
+        console.log('[mock] UpdateSettingsAsync called');
+        return true;
+    }
 };
 
 function __startMock() {

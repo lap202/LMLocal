@@ -16,9 +16,8 @@ const __mockBridge = {
         MaxContext: 16384,
         UsedTokens: 0
     }),
-    ExecutePromptAsync: async (prompt) => {
-        // Complex GFM payload with setext heading, nested lists, blockquote, reference links, image, tables, fenced code
-        const gfm = `Setext Heading\n===============\n\n1. First item\n   - Nested bullet\n     - Deep nested\n\n> This is a blockquote\n>\n> - nested in blockquote\n\nInline code: ` + '`' + `const x = 1` + '`' + ` and fenced code:\n\n\`\`\`python\nprint('hello')\n\`\`\`\n\nImage: ![Alt text](https://via.placeholder.com/150)\n\nReference link: [GitHub][1]\n\n[1]: https://github.com\n\nAutolink: https://example.org\n\nTable:\n| Left | Center | Right |\n| :-- | :-: | --: |\n| L | C | R |\n`;
+    ExecutePromptAsync: async (requestJson) => {
+        const gfm = `Setext Heading\n===============\n\n1. First item\n   - Nested bullet\n     - Deep nested\n\n> This is a blockquote\n>\n> - nested in blockquote\n\nInline code: ` + '`' + `const x = 1` + '`' + ` and fenced code:\n\n\`\`\`python\nprint('hello')\n\`\`\`\n\nImage: ![Alt text](https://via.placeholder.com/150)\n\nReference link: [GitHub][1]\n\n[1]: https://github.com\n\nAutolink: https://example.org\n\nTable:\n\n| Left | Center | Right |\n| :-- | :-: | --: |\n| L | C | R |\n\n`;
 
         setTimeout(() => {
             _listeners.forEach(fn => fn({
@@ -39,7 +38,23 @@ const __mockBridge = {
         }, 50);
     },
     ResetHistoryAsync: async () => {},
-    CopyToClipboardAsync: async (text) => true
+    CopyToClipboardAsync: async (text) => true,
+    GetInstructionsAsync: async () => {
+        console.log('[mock] GetInstructionsAsync called');
+        return JSON.stringify({ tabs: [] });
+    },
+    UpdateInstructionsAsync: async (json) => {
+        console.log('[mock] UpdateInstructionsAsync called');
+        return true;
+    },
+    GetSettingsAsync: async () => {
+        console.log('[mock] GetSettingsAsync called');
+        return JSON.stringify({});
+    },
+    UpdateSettingsAsync: async (json) => {
+        console.log('[mock] UpdateSettingsAsync called');
+        return true;
+    }
 };
 
 function __startMock() {

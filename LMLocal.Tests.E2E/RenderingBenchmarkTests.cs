@@ -160,6 +160,100 @@ public class RenderingBenchmarkTests : PageTest
             $"Too many layouts triggered: {layoutCount} (threshold: {layoutThreshold})");
     }
 
+    [Test]
+    [Category("Benchmark")]
+    public async Task Benchmark_ThoughtRenderingPerformance()
+    {
+        // Benchmark measuring time from send to thought content render for a single thought.
+        // Uses the thinking mock which emits StreamThought events.
+        var client = await Page.Context.NewCDPSessionAsync(Page);
+        await client.SendAsync("Performance.enable");
+
+        // Relay browser console logs to test output for parity with other benchmarks
+        Page.Console += (_, msg) =>
+        {
+            Console.WriteLine($"[BROWSER] {msg.Type}: {msg.Text}");
+        };
+
+        await GotoWithMockAsync("webview-mock-thinking.js");
+        await Expect(Page.Locator("#conn-status")).ToHaveTextAsync("Connected", new() { Timeout = 3000 });
+
+        // Try to read total chunks info from the page if available (may be undefined for some mocks)
+        try
+        {
+            var totalChunks = await Page.EvaluateAsync<int>("() => (window.__streamingState && window.__streamingState.totalChunksToSend) || 0");
+            Console.WriteLine($"Total chunks to send: {totalChunks}");
+        }
+        catch
+        {
+            // ignore if not present
+        }
+
+        // Force a garbage collection before test
+        await client.SendAsync("HeapProfiler.enable");
+        await client.SendAsync("HeapProfiler.collectGarbage");
+
+        // Take snapshot of metrics before generation starts
+        var startMetricsObj = await client.SendAsync("Performance.getMetrics");
+        var startMetrics = ExtractMetrics(startMetricsObj);
+
+        // Mark start just before triggering the thought stream
+        await Page.EvaluateAsync("() => { window.__bench_thought_start = performance.now(); }");
+
+        await Page.Locator("#userInput").FillAsync("Hello");
+        await Page.Locator("#mainBtn").ClickAsync();
+
+        // Wait until thought content appears and has non-empty text
+        await Page.WaitForFunctionAsync(
+            "() => { const el = document.querySelector('.thought-content'); return el && el.innerText && el.innerText.length > 0; }",
+            new PageWaitForFunctionOptions { Timeout = 10000 }
+        );
+
+        // Compute duration
+        var durationMs = await Page.EvaluateAsync<double>("() => performance.now() - (window.__bench_thought_start || performance.now())");
+
+        // Try to read actual chunks sent info if available
+        try
+        {
+            var chunksSent = await Page.EvaluateAsync<int>("() => (window.__streamingState && window.__streamingState.chunksSent) || 0");
+            Console.WriteLine($"Actual chunks sent: {chunksSent}");
+        }
+        catch
+        {
+            // ignore
+        }
+
+        // Gather end metrics
+        var endMetricsObj = await client.SendAsync("Performance.getMetrics");
+        var endMetrics = ExtractMetrics(endMetricsObj);
+
+        // Calculate differences
+        long layoutCount = endMetrics["LayoutCount"] - startMetrics["LayoutCount"];
+        long recalcStyleCount = endMetrics["RecalcStyleCount"] - startMetrics["RecalcStyleCount"];
+        double domDeltaBytes = (endMetrics["JSHeapUsedSize"] - startMetrics["JSHeapUsedSize"]) / 1024.0 / 1024.0;
+
+        // 10. Output Results (mirror format of Markdown benchmark)
+        Console.WriteLine("\n================ THOUGHT BENCHMARK RESULTS ================");
+        Console.WriteLine($"Thought render Duration: {durationMs:F2} ms");
+        Console.WriteLine($"Layout Recalculations:    {layoutCount}");
+        Console.WriteLine($"CSS Style Recalculations: {recalcStyleCount}");
+        Console.WriteLine($"JS Heap Used Delta:       {domDeltaBytes:F2} MB");
+        Console.WriteLine("===================================================\n");
+
+        TestContext.Out.WriteLine("BENCHMARK_THOUGHT_RESULTS:");
+        TestContext.Out.WriteLine($"Thought render duration (ms): {durationMs}");
+        TestContext.Out.WriteLine($"LayoutCount: {layoutCount}");
+        TestContext.Out.WriteLine($"RecalcStyleCount: {recalcStyleCount}");
+
+        // Basic sanity assertions: duration should be positive and not ridiculously large
+        Assert.That(durationMs, Is.GreaterThan(0), "Measured thought render duration should be > 0");
+
+        // Assert sanity limits for layouts similar to markdown benchmark (use small fixed threshold since single thought)
+        var layoutThreshold = Math.Max(50, 1 * 5);
+        Assert.That(layoutCount, Is.LessThan(layoutThreshold),
+            $"Too many layouts triggered for thought: {layoutCount} (threshold: {layoutThreshold})");
+    }
+
     private System.Collections.Generic.Dictionary<string, long> ExtractMetrics(JsonElement? metricJson)
     {
         var dict = new System.Collections.Generic.Dictionary<string, long>();

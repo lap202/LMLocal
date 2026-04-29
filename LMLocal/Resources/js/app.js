@@ -1,7 +1,7 @@
 "use strict";
 
-import appManager from './app.manager.js';
-import appController from './app.controller.js';
+import appManager from '@app/store/app.manager.js';
+import appController from '@app/app.controller.js';
 
 window.lmInit = async () => {
     try {

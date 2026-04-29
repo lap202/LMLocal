@@ -1,5 +1,3 @@
-using LMLocalBridgeNamespace;
-using Microsoft.Web.WebView2.Core;
 using System;
 using System.IO;
 using System.Reflection;
@@ -7,7 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using LMLocal.Common;
+using LMLocal.Infrastructure.WebView;
+using LMLocal.Services;
+using Microsoft.Web.WebView2.Core;
 
 namespace LMLocal
 {
@@ -19,14 +20,10 @@ namespace LMLocal
         private static CoreWebView2Environment sharedEnvironment;
         private static readonly SemaphoreSlim _envLock = new SemaphoreSlim(1, 1);
 
-        private const string WebViewUserDataFolder = "LMLocalChat/WebViewData";
-        private const string HtmlResourcePath = "Resources/app.html";
         private bool _disposed;
         private bool _webViewInitialized;
         private bool _webViewInitializing;
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MainWindowControl"/> class.
-        /// </summary>
+
         public MainWindowControl()
         {
             this.InitializeComponent();
@@ -46,12 +43,16 @@ namespace LMLocal
             try
             {
                 await _envLock.WaitAsync();
+
+                var settingsManager = new SettingsManager();
+                await settingsManager.LoadAsync();
+
                 try
                 {
                     if (sharedEnvironment == null)
                     {
                         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        string userDataFolder = Path.Combine(localAppData, WebViewUserDataFolder);
+                        string userDataFolder = Path.Combine(localAppData, Defaults.LocalAppDataFolder, Defaults.WebViewUserDataFolder);
                         Directory.CreateDirectory(userDataFolder);
                         sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
                     }
@@ -67,13 +68,12 @@ namespace LMLocal
                 string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 string resourcesPath = Path.Combine(assemblyDir, "Resources");
                 chatBrowser.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "app.local",
+                    Defaults.VirtualHostName,
                     resourcesPath,
                     CoreWebView2HostResourceAccessKind.Allow
                 );
 
-                // Register the bridge object as "chrome.webview.hostObjects.bridge"
-                chatBrowser.CoreWebView2.AddHostObjectToScript("bridge", new LMLocalBridge(chatBrowser));
+                chatBrowser.CoreWebView2.AddHostObjectToScript("bridge", new WebViewBridge(chatBrowser, settingsManager));
 
                 chatBrowser.HorizontalAlignment = HorizontalAlignment.Stretch;
                 chatBrowser.VerticalAlignment = VerticalAlignment.Stretch;
@@ -86,14 +86,13 @@ namespace LMLocal
 
                 chatBrowser.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
 
-                string html = GetHtmlFromResource(HtmlResourcePath);
+                string html = GetHtmlFromResource(Defaults.HtmlResourcePath);
                 chatBrowser.NavigateToString(html);
 
                 _webViewInitialized = true;
             }
             catch (Exception ex)
             {
-                // Handle initialization errors
                 MessageBox.Show($"WebView2 Error: {ex.Message}");
             }
             finally
@@ -118,7 +117,6 @@ namespace LMLocal
 
         private string GetHtmlFromResource(string resourceName)
         {
-            // resourceName should be in the format: "Resources/index.html"
             var uri = new Uri($"/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name};component/{resourceName}", UriKind.Relative);
             var streamInfo = Application.GetResourceStream(uri) ?? throw new InvalidOperationException("Resource not found: " + resourceName);
             using (var reader = new System.IO.StreamReader(streamInfo.Stream))
@@ -132,7 +130,6 @@ namespace LMLocal
             if (chatBrowser?.CoreWebView2 == null || !_webViewInitialized)
                 return;
 
-            // Ensure WebView2 has focus
             chatBrowser.Focus();
 
             string keyName = GetKeyName(keyCode);
@@ -196,7 +193,10 @@ namespace LMLocal
                 {
                     chatBrowser.Dispose();
                 }
-                catch { /* ignore dispose errors */ }
+                catch (Exception ex)
+                {
+                    InternalLogger.Error("Failed to dispose WebView2 control.", ex);
+                }
             }
             GC.SuppressFinalize(this);
         }

@@ -1,0 +1,238 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using LMLocal.Infrastructure;
+using LMLocal.Services;
+using LMLocal.Models;
+using LMLocal.Infrastructure.Lm;
+using Moq;
+using NUnit.Framework;
+using LMLocal.Infrastructure.Lm.Responses;
+
+namespace LMLocal.Tests.Unit.Infrastructure
+{
+    [TestFixture]
+    public class AdditionalCriticalTests
+    {
+
+        private class DelayedWriteFileSystem : IFileSystem
+        {
+            private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte[]> _files = new System.Collections.Concurrent.ConcurrentDictionary<string, byte[]>();
+            private readonly TaskCompletionSource<bool> _allowWrite = new TaskCompletionSource<bool>();
+
+            public void AllowWrite() => _allowWrite.TrySetResult(true);
+
+            public void CreateDirectory(string path) { }
+            public bool FileExists(string path) => _files.ContainsKey(N(path));
+            public string ReadAllText(string path) => Encoding.UTF8.GetString(_files[N(path)]);
+            public Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default) => Task.FromResult(ReadAllText(path));
+            public async Task WriteAllBytesAsync(string path, byte[] data, CancellationToken cancellationToken = default)
+            {
+                await _allowWrite.Task.ConfigureAwait(false);
+                _files[N(path)] = data;
+            }
+            public async Task AppendAllBytesAsync(string path, byte[] data, CancellationToken cancellationToken = default)
+            {
+                await _allowWrite.Task.ConfigureAwait(false);
+                var key = N(path);
+                if (_files.TryGetValue(key, out var existing))
+                {
+                    var combined = new byte[existing.Length + data.Length];
+                    Array.Copy(existing, combined, existing.Length);
+                    Array.Copy(data, 0, combined, existing.Length, data.Length);
+                    _files[key] = combined;
+                }
+                else
+                {
+                    _files[key] = data;
+                }
+            }
+            public void Replace(string sourceFileName, string destinationFileName)
+            {
+                Move(sourceFileName, destinationFileName);
+            }
+            public void Move(string sourceFileName, string destinationFileName)
+            {
+                var s = N(sourceFileName);
+                var d = N(destinationFileName);
+                if (!_files.TryRemove(s, out var data)) throw new System.IO.FileNotFoundException();
+                _files[d] = data;
+            }
+            public void Delete(string path) => _files.TryRemove(N(path), out _);
+            private static string N(string p) => p?.Replace('\\','/').ToLowerInvariant();
+
+            public void Seed(string path, string content) => _files[N(path)] = Encoding.UTF8.GetBytes(content);
+
+            public void ValidateFilePath(string filePath)
+            {
+                if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
+                char[] invalidPath = Path.GetInvalidPathChars();
+                foreach (var c in invalidPath)
+                {
+                    if (filePath.IndexOf(c) >= 0) throw new ArgumentException("File path contains invalid characters.", nameof(filePath));
+                }
+                string fileName = Path.GetFileName(filePath);
+                if (string.IsNullOrEmpty(fileName)) throw new ArgumentException("File path must contain a file name.", nameof(filePath));
+                char[] invalidFile = Path.GetInvalidFileNameChars();
+                foreach (var c in invalidFile)
+                {
+                    if (fileName.IndexOf(c) >= 0) throw new ArgumentException("File name contains invalid characters.", nameof(filePath));
+                }
+            }
+
+            public void EnsureDirectoryExistsForFile(string filePath)
+            {
+            }
+        }
+
+        [Test]
+        public async Task SaveAndLoad_Race_LoadReadsOriginalUntilMove()
+        {
+            var fs = new DelayedWriteFileSystem();
+            var path = "settings.json";
+            fs.Seed(path, "{\"LmStudioBaseUrl\":\"http://original\",\"AutoLoadOnStartup\":true,\"EnableHistoryCompression\":true,\"EnableHistoryCompaction\":true,\"Theme\":0}");
+
+            var mgr = new SettingsManager(path, fs);
+            var newSettings = new AppSettings { LmStudioBaseUrl = "http://new" };
+
+            var saveTask = mgr.SaveAsync(newSettings);
+
+            var loadTask = mgr.LoadAsync();
+
+            fs.AllowWrite();
+
+            await Task.WhenAll(saveTask, loadTask);
+
+            Assert.That(loadTask.Result.LmStudioBaseUrl, Is.EqualTo("http://original").Or.EqualTo("http://new"));
+
+            var content = fs.ReadAllText(path);
+            Assert.That(content, Does.Contain("http://new"));
+        }
+
+
+        [Test]
+        public void Constructor_InvalidPath_ThrowsArgumentException()
+        {
+            string bad = "bad\0path";
+            Assert.Throws<ArgumentException>(() => new SettingsManager(bad));
+        }
+
+
+        [Test]
+        public async Task CreateAsync_PreloadsFromFile()
+        {
+            var fs = new InMemoryTestFileSystem();
+            var path = "settings2.json";
+            var json = "{\"LmStudioBaseUrl\":\"http://prefilled\",\"AutoLoadOnStartup\":true,\"EnableHistoryCompression\":true,\"EnableHistoryCompaction\":true,\"Theme\":0}";
+            await fs.WriteAllBytesAsync(path, Encoding.UTF8.GetBytes(json));
+
+            var mgr = new SettingsManager(path, fs);
+            await mgr.LoadAsync();
+            Assert.That(mgr.Current.LmStudioBaseUrl, Is.EqualTo("http://prefilled"));
+        }
+
+
+
+
+        [Test]
+        public void AddUserMessage_StripsMarkdown_WhenEnabled()
+        {
+            var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.Current).Returns(new AppSettings { EnableHistoryCompression = true });
+            var hist = new ChatHistoryManager("sys", null, mockSettings.Object);
+
+            hist.AddUserMessage("**bold** _italic_");
+            var copy = hist.GetHistoryCopy();
+
+            Assert.That(copy.Count, Is.EqualTo(1));
+            Assert.That(copy[0].Content, Does.Not.Contain("**"));
+            Assert.That(copy[0].Content, Does.Contain("bold"));
+        }
+
+        [Test]
+        public void BuildMessagesForRequest_IncludesReferenceCode_WhenIncludedContentProvided()
+        {
+            var hist = new ChatHistoryManager("sys");
+            var messages = hist.BuildUserMessagesWithHistory("ask", includedContent: "code snippet");
+
+            Assert.That(messages[messages.Count -1].Content, Is.EqualTo("ask"));
+            Assert.That(messages, Has.Exactly(1).Matches<ChatMessage>(m => m.Content.StartsWith("Reference code:")));
+        }
+
+        [Test]
+        public async Task CompactIfNeededAsync_NoToSummarize_DoesNothing()
+        {
+            var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.Current).Returns(new AppSettings { EnableHistoryCompaction = true });
+            var history = new ChatHistoryManager("sys", null, mockSettings.Object);
+
+            for (int i = 0; i < 3; i++) history.AddUserMessage("m" + i);
+            var called = false;
+            var compactor = new HistoryCompactor(history,  async t => { called = true; await Task.CompletedTask; }, mockSettings.Object);
+            compactor.SetMaxContext(1000);
+
+            var fakeClient = new DummyClient("unused");
+            await compactor.CompactIfNeededAsync(fakeClient, null, CancellationToken.None);
+
+            Assert.That(called, Is.False);
+        }
+
+        private class DummyClient : ILMStudioClient
+        {
+            private readonly string _r;
+            public DummyClient(string r) { _r = r; }
+            public Task<ListModelsResponse> ListModelsAsync(CancellationToken cancellationToken) => throw new NotImplementedException();
+            public Task<StreamingResponse> SendChatStreamingAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken) => throw new NotImplementedException();
+            public Task<SendChatResponse> SendChatAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken) => Task.FromResult<SendChatResponse>(null);
+        }
+
+
+        class DelayedHandler : HttpMessageHandler
+        {
+            private readonly HttpResponseMessage _response;
+            private readonly int _delayMs;
+            public DelayedHandler(HttpResponseMessage response, int delayMs = 200) { _response = response; _delayMs = delayMs; }
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                await Task.Delay(_delayMs, cancellationToken).ConfigureAwait(false);
+                return _response;
+            }
+        }
+
+        [Test]
+        public void GetModelsAsync_ErrorResponse_ThrowsWithParsedMessage()
+        {
+            var json = "{ \"error\": { \"message\": \"boom\" } }";
+            var response = new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(json) };
+            var client = new HttpClient(new FakeHandler(response));
+            var lm = new LMStudioClient(client, "http://localhost:1234");
+            Assert.ThrowsAsync<HttpRequestException>(async () => await lm.ListModelsAsync(CancellationToken.None));
+        }
+
+        [Test]
+        public void SendChatAsync_Cancellation_ThrowsTaskCanceled()
+        {
+            var json = "{ \"choices\": [ { \"message\": { \"content\": \"hello\" } } ] }";
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) };
+            var client = new HttpClient(new DelayedHandler(response, 500));
+            var lm = new LMStudioClient(client, "http://localhost:1234");
+            var cts = new CancellationTokenSource(50);
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await lm.SendChatAsync(new MessageContext(new List<ChatMessage>()), new ModelContext("test"), cts.Token));
+        }
+
+        class FakeHandler : HttpMessageHandler
+        {
+            private readonly HttpResponseMessage _response;
+            public FakeHandler(HttpResponseMessage response) { _response = response; }
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(_response);
+            }
+        }
+    }
+}

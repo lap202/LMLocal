@@ -70,19 +70,26 @@
     <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
-    <Reference Include="System.ValueTuple, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.ValueTuple.4.4.0\lib\net47\System.ValueTuple.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Infrastructure\AppSettingsEqualityTests.cs" />
+    <Compile Include="Infrastructure\ChatPersistenceServiceTests.cs" />
+    <Compile Include="Infrastructure\InstructionsManagerTests.cs" />
+    <Compile Include="Infrastructure\SettingsThemeNormalizationTests.cs" />
+    <Compile Include="Internal\StreamInactivityWatcherTests.cs" />
+    <Compile Include="Internal\StreamProcessorTests.cs" />
+    <Compile Include="Internal\TestHelpers\TestFileSystems.cs" />
     <Reference Include="System.Net.Http" />
+    <Compile Include="Infrastructure\AdditionalCriticalTests.cs" />
+    <Compile Include="Infrastructure\LMStudioClientAdditionalTests.cs" />
+    <Compile Include="Infrastructure\SettingsManagerAdditionalTests.cs" />
+    <Compile Include="Infrastructure\SettingsManagerTests.cs" />
     <Compile Include="Internal\ChatGenerationServiceTests.cs" />
     <Compile Include="Internal\ChatHistoryManagerTests.cs" />
     <Compile Include="Internal\HistoryCompactorTests.cs" />
     <Compile Include="Internal\LlmSseParserTests.cs" />
-    <Compile Include="Internal\LMStudioClientTests.cs" />
+    <Compile Include="Infrastructure\LMStudioClientTests.cs" />
     <Compile Include="Internal\MarkdownStripperTests.cs" />
-    <Compile Include="Internal\StreamProcessorTests.cs" />
     <Compile Include="Internal\TokenSpeedCalculatorDeterministicTests.cs" />
     <Compile Include="Internal\TokenSpeedCalculatorTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

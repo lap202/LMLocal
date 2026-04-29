@@ -3,7 +3,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LMLocal.Internal;
+using LMLocal.Services;
+using LMLocal.Models;
 using NUnit.Framework;
 
 namespace LMLocal.Tests.Unit.Internal
@@ -11,13 +12,28 @@ namespace LMLocal.Tests.Unit.Internal
     [TestFixture]
     public class StreamProcessorTests
     {
+        private class MockStreamInactivityWatcher : IStreamInactivityWatcher
+        {
+            public bool IsTimeout => false;
+
+            public Task WatchAsync(Func<long> isActive, CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public void SignalCompletion()
+            {
+            }
+        }
 
         [Test]
         public void ProcessStreamAsync_Throws_OnCancellation()
         {
             var processor = new StreamProcessor(
                 async (chunk, stats) => { await Task.CompletedTask; },
-                async (err) => { await Task.CompletedTask; }
+                async (err) => { await Task.CompletedTask; },
+                async () => { await Task.CompletedTask; },
+                inactivityWatcher: new MockStreamInactivityWatcher()
             );
             var json = "data: {\"choices\":[{\"delta\":{\"content\":\"cancel\"}}]}\n";
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
@@ -36,7 +52,9 @@ namespace LMLocal.Tests.Unit.Internal
             var processor = new StreamProcessor(
                 async (chunk, stats) => { chunkCount++; await Task.CompletedTask; },
                 async (err) => { await Task.CompletedTask; },
-                1
+                async () => { await Task.CompletedTask; },
+                1,
+                inactivityWatcher: new MockStreamInactivityWatcher()
             );
             var json = new StringBuilder();
             json.AppendLine("data: {\"choices\":[{\"delta\":{\"content\":\"a\"}}]}");
@@ -54,7 +72,9 @@ namespace LMLocal.Tests.Unit.Internal
             bool chunkCalled = false;
             var processor = new StreamProcessor(
                 async (chunk, stats) => { chunkCalled = true; await Task.CompletedTask; },
-                async (err) => { await Task.CompletedTask; }
+                async (err) => { await Task.CompletedTask; },
+                async () => { await Task.CompletedTask; },
+                inactivityWatcher: new MockStreamInactivityWatcher()
             );
             var json = "\n   \ndata: [DONE]\n";
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
@@ -71,7 +91,9 @@ namespace LMLocal.Tests.Unit.Internal
             bool errorCalled = false;
             var processor = new StreamProcessor(
                 async (chunk, tokens) => { await Task.CompletedTask; },
-                async (err) => { errorCalled = true; await Task.CompletedTask; }
+                async (err) => { errorCalled = true; await Task.CompletedTask; },
+                async () => { await Task.CompletedTask; },
+                inactivityWatcher: new MockStreamInactivityWatcher()
             );
             var invalid = "data: {not a json}\n";
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(invalid)))
@@ -88,7 +110,9 @@ namespace LMLocal.Tests.Unit.Internal
             var processor = new StreamProcessor(
                 async (chunk, stats) => { reportedTokens = stats.TotalTokens; await Task.CompletedTask; },
                 async (err) => { await Task.CompletedTask; },
-                0
+                async () => { await Task.CompletedTask; },
+                0,
+                inactivityWatcher: new MockStreamInactivityWatcher()
             );
             var json = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}],\"usage\":{\"total_tokens\":42}}\n";
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
@@ -106,7 +130,9 @@ namespace LMLocal.Tests.Unit.Internal
             var processor = new StreamProcessor(
                 async (chunk, tokens) => { chunkCount++; await Task.CompletedTask; },
                 async (err) => { await Task.CompletedTask; },
-                10000
+                async () => { await Task.CompletedTask; },
+                5000,
+                inactivityWatcher: new MockStreamInactivityWatcher()
             );
             var json = "data: {\"choices\":[{\"delta\":{\"content\":\"final\"}}]}\n";
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
@@ -122,7 +148,9 @@ namespace LMLocal.Tests.Unit.Internal
             bool chunkCalled = false;
             var processor = new StreamProcessor(
                 async (chunk, tokens) => { chunkCalled = true; await Task.CompletedTask; },
-                async (err) => { await Task.CompletedTask; }
+                async (err) => { await Task.CompletedTask; },
+                async () => { await Task.CompletedTask; },
+                inactivityWatcher: new MockStreamInactivityWatcher()
             );
             using (var stream = new MemoryStream())
             {
@@ -131,6 +159,7 @@ namespace LMLocal.Tests.Unit.Internal
                 Assert.That(fullResponse, Is.EqualTo(""));
             }
         }
+
         [Test]
         public async Task ProcessStreamAsync_ProcessesChunksAndReturnsResult()
         {
@@ -140,7 +169,10 @@ namespace LMLocal.Tests.Unit.Internal
             var processor = new StreamProcessor(
                 async (chunk, stats) => { chunkCalled = true; reportedTokens = stats.TotalTokens; await Task.CompletedTask; },
                 async (err) => { errorCalled = true; await Task.CompletedTask; },
-                10);
+                async () => { await Task.CompletedTask; },
+                10,
+                inactivityWatcher: new MockStreamInactivityWatcher()
+            );
             var json = "data: {\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n";
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
             {
@@ -151,5 +183,48 @@ namespace LMLocal.Tests.Unit.Internal
                 Assert.That(reportedTokens, Is.EqualTo(1));
             }
         }
+
+        [Test]
+        public async Task ProcessStreamAsync_UsesInactivityWatcher_WhenProvided()
+        {
+            bool watcherCalled = false;
+            var watcherMock = new CustomStreamInactivityWatcher(() => watcherCalled = true);
+
+            var processor = new StreamProcessor(
+                async (chunk, stats) => { await Task.CompletedTask; },
+                async (err) => { await Task.CompletedTask; },
+                async () => { await Task.CompletedTask; },
+                inactivityWatcher: watcherMock
+            );
+
+            var json = "data: {\"choices\":[{\"delta\":{\"content\":\"test\"}}]}\n";
+            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+            {
+                await processor.ProcessStreamAsync(stream, CancellationToken.None);
+                Assert.That(watcherCalled, Is.True);
+            }
+        }
+
+            private class CustomStreamInactivityWatcher : IStreamInactivityWatcher
+            {
+                private readonly Action _onWatchCalled;
+
+                public CustomStreamInactivityWatcher(Action onWatchCalled)
+                {
+                    _onWatchCalled = onWatchCalled;
+                }
+
+                public bool IsTimeout => false;
+
+                public Task WatchAsync(Func<long> isActive, CancellationToken cancellationToken)
+                {
+                    _onWatchCalled();
+                    return Task.CompletedTask;
+                }
+
+                public void SignalCompletion()
+                {
+                }
+            }
     }
 }

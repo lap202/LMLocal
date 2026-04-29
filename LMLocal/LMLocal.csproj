@@ -68,23 +68,43 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Internal\ChatGenerationService.cs" />
-    <Compile Include="Internal\ChatHistoryManager.cs" />
-    <Compile Include="Internal\VsActiveWindow.cs" />
-    <Compile Include="Internal\HistoryCompactor.cs" />
-    <Compile Include="Internal\InternalLogger.cs" />
-    <Compile Include="Internal\ITimeProvider.cs" />
-    <Compile Include="Internal\ITokenSpeedCalculator.cs" />
-    <Compile Include="Internal\LlmSseParser.cs" />
-    <Compile Include="Internal\LMStudioClient.cs" />
-    <Compile Include="Internal\MarkdownStripper.cs" />
-    <Compile Include="Internal\StreamChunk.cs" />
-    <Compile Include="Internal\StreamProcessor.cs" />
-    <Compile Include="Internal\SystemTimeProvider.cs" />
-    <Compile Include="Internal\TokenGenerationStats.cs" />
-    <Compile Include="Internal\TokenSpeedCalculator.cs" />
-    <Compile Include="Internal\WebView2ScriptExecutor.cs" />
-    <Compile Include="LMLocalBridge.cs" />
+    <Compile Include="Infrastructure\WebView\GetStatusResponse.cs" />
+    <Compile Include="Infrastructure\Lm\Responses\ListModelsResponse.cs" />
+    <Compile Include="Infrastructure\Lm\ModelContext.cs" />
+    <Compile Include="Infrastructure\Lm\MessageContext.cs" />
+    <Compile Include="Infrastructure\Lm\Responses\SendChatResponse.cs" />
+    <Compile Include="Infrastructure\Lm\Requests\SendChatRequest.cs" />
+    <Compile Include="Infrastructure\Lm\Responses\StreamingResponse.cs" />
+    <Content Include="Resources\js\store\app.selectors.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Compile Include="Services\ChatPersistenceService.cs" />
+    <Compile Include="Infrastructure\Persistence\DefaultFileSystem.cs" />
+    <Compile Include="Common\Defaults.cs" />
+    <Compile Include="Services\InstructionsManager.cs" />
+    <Compile Include="Common\JsonExtensions.cs" />
+    <Compile Include="Models\AppSettings.cs" />
+    <Compile Include="Services\SettingsManager.cs" />
+    <Compile Include="Services\ChatGenerationService.cs" />
+    <Compile Include="Services\ChatHistoryManager.cs" />
+    <Compile Include="Models\ChatMessage.cs" />
+    <Compile Include="Models\ExecutePromptRequest.cs" />
+    <Compile Include="Models\GenerateStreamContext.cs" />
+    <Compile Include="Models\StreamChunk.cs" />
+    <Compile Include="Infrastructure\Vs\ActiveDocumentProvider.cs" />
+    <Compile Include="Services\HistoryCompactor.cs" />
+    <Compile Include="Common\InternalLogger.cs" />
+    <Compile Include="Services\Stream\LlmSseParser.cs" />
+    <Compile Include="Infrastructure\Lm\LMStudioClient.cs" />
+    <Compile Include="Common\MarkdownStripper.cs" />
+    <Compile Include="Services\Stream\StreamInactivityWatcher.cs" />
+    <Compile Include="Services\Stream\StreamProcessor.cs" />
+    <Compile Include="Infrastructure\Time\SystemTimeProvider.cs" />
+    <Compile Include="Models\TokenGenerationStats.cs" />
+    <Compile Include="Services\Stream\TokenSpeedCalculator.cs" />
+    <Compile Include="Infrastructure\WebView\WebViewScriptExecutor.cs" />
+    <Compile Include="Infrastructure\WebView\WebViewBridge.cs" />
     <Compile Include="MainWindow.cs" />
     <Compile Include="MainWindowCommand.cs" />
     <Compile Include="MainWindowControl.xaml.cs">
@@ -92,19 +112,35 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="LMLocalPackage.cs" />
+    <Content Include="Resources\css\hljs.dark.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\css\hljs.light.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\css\hljs.mid.dark.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\css\hljs.mid.light.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="Resources\icon.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\css\github-dark.min.css">
+    <Content Include="Resources\js\components\theme.component.js">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\js\store\app.globals.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\app.globals.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <IncludeInVSIX>true</IncludeInVSIX>
-    </Content>
-    <Content Include="Resources\js\app.manager.js">
+    <Content Include="Resources\js\store\app.manager.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
@@ -112,43 +148,67 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\app.store.js">
+    <Content Include="Resources\js\store\app.store.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\bridge.client.js">
+    <Content Include="Resources\js\api\bridge.client.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\bridge.message.dispatcher.js">
+    <Content Include="Resources\js\api\bridge.message.dispatcher.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\callback.js">
+    <Content Include="Resources\js\lib\callback.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\chat.controller.js">
+    <Content Include="Resources\js\chat\chat.controller.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\copy.buttons.js">
+    <Content Include="Resources\js\chat\attach.copy.button.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\modal.js">
+    <Content Include="Resources\js\dialogs\instructions.dialog.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\highlight.min.js">
+    <Content Include="Resources\js\store\base.store.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\highlight.worker.client.js">
+    <Content Include="Resources\js\store\instructions.store.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\input.component.js">
+    <Content Include="Resources\js\store\model.store.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\store\settings.store.js">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\js\workers\md4x.bundle.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\workers\md4x.worker.client.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\workers\highlight.min.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\workers\highlight.worker.client.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\components\input.component.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
@@ -160,52 +220,64 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\ai.message.js">
+    <Content Include="Resources\js\chat\ai.message.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\chunk.buffer.js">
+    <Content Include="Resources\js\store\chunk.buffer.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\streaming.scheduler.js">
+    <Content Include="Resources\js\dialogs\confirm.dialog.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\streaming.pipeline.js">
+    <Content Include="Resources\js\streaming\streaming.scheduler.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\streaming.renderer.js">
+    <Content Include="Resources\js\streaming\streaming.pipeline.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\user.message.js">
+    <Content Include="Resources\js\streaming\streaming.renderer.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\streaming.buffer.js">
+    <Content Include="Resources\js\chat\user.message.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\streaming\streaming.buffer.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\dialogs\settings.dialog.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\instructions\tabs.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <Compile Include="ShowMainWindow.cs" />
-    <Content Include="Resources\js\markdown.worker.client.js">
+    <Content Include="Resources\js\workers\markdown.worker.client.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\menu.component.js">
+    <Content Include="Resources\js\components\menu.component.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\markdown.parser.js">
+    <Content Include="Resources\js\workers\markdown.parser.js">
       <IncludeInVSIX>true</IncludeInVSIX>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Resources\js\scroll.manager.js">
+    <Content Include="Resources\js\lib\scroll.manager.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\status.component.js">
+    <Content Include="Resources\js\components\status.component.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
@@ -215,6 +287,18 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Resources\js\workers\md4x.wasm">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\instructions\instructions.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\instructions\shared.instructions.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
@@ -224,6 +308,7 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data" />
     <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
@@ -260,7 +345,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\marked.udm.js">
+    <Content Include="Resources\js\workers\marked.udm.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>

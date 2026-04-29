@@ -14,10 +14,26 @@ const __mockBridge = {
         console.log('[mock] GetStatusAsync returning:', result);
         return result;
     },
-    ExecutePromptAsync: async (prompt) => {},
+    ExecutePromptAsync: async (requestJson) => {},
     StopExecutionAsync: async () => {},
     ResetHistoryAsync: async () => {},
-    CopyToClipboardAsync: async (text) => true
+    CopyToClipboardAsync: async (text) => true,
+    GetInstructionsAsync: async () => {
+        console.log('[mock] GetInstructionsAsync called');
+        return JSON.stringify({ tabs: [] });
+    },
+    UpdateInstructionsAsync: async (json) => {
+        console.log('[mock] UpdateInstructionsAsync called');
+        return true;
+    },
+    GetSettingsAsync: async () => {
+        console.log('[mock] GetSettingsAsync called');
+        return JSON.stringify({});
+    },
+    UpdateSettingsAsync: async (json) => {
+        console.log('[mock] UpdateSettingsAsync called');
+        return true;
+    }
 };
 
 function __startMock() {

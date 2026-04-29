@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://app.local/css/github-dark.min.css">
+    <link id="hljs-theme" rel="stylesheet" href="https://app.local/css/hljs.dark.css">
     <link rel="stylesheet" href="https://app.local/css/app.css">
 </head>
 <body>
@@ -13,8 +13,8 @@
             <div class="progress-container"><div id="token-bar-fill"></div></div>
         </div>
         <div class="model-info">
-            <span id="conn-status" class="retryable">Connecting</span>
-            <button id="retry-btn" style="display:none; background:none; border:none; cursor:pointer; padding:0 4px; font-size:14px; color:inherit; opacity:0.7;">↻</button>
+            <span id="conn-status" class="retryable">Connecting </span>
+            <button id="retry-btn" style="display:none;" title="Retry connection">↻</button>
             <span id="status-separator" style="display:none"> · </span>
             <span id="model-name">...</span>
         </div>
@@ -26,12 +26,25 @@
             </button>
 
             <div id="dropdown-menu" class="dropdown-content">
+                <button data-action="open-instructions" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px; flex-shrink: 0;">
+                        <path fill-rule="evenodd" d="M2.667 4h10.666C14.066 4 15 4.934 15 6.083v5.834c0 1.15-.934 2.083-2.667 2.083H7.5L4.167 16v-2H2.667C1.534 14 .667 13.067.667 11.917V6.083C.667 4.934 1.6 4 2.667 4zm0 1c-.367 0-.667.3-.667.667v5.833c0 .367.3.667.667.667H5v2l2.5-2h5.833c.367 0 .667-.3.667-.667V5.667c0-.367-.3-.667-.667-.667H2.667z" />
+                    </svg>
+                    AI Instructions...
+                </button>
+                <button data-action="open-settings">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px; flex-shrink: 0;">
+                        <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
+                        <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428-.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
+                    </svg>
+                    Settings...
+                </button>
                 <button data-action="clear-chat">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px;">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px; flex-shrink: 0;">
                         <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
                         <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
                     </svg>
-                    Clear chat
+                    Clear chat...
                 </button>
             </div>
         </div>
@@ -42,6 +55,7 @@
          aria-relevant="additions"
          aria-atomic="false">
     </div>
+    <div class="scroll-spacer"></div>
 
     <div id="status-bar"><span id="status-icon"></span><span id="status-text" aria-live="polite">Ready</span><span id="live-token-count" style="margin-left: 10px; display: none;"><span id="token-number">0 tokens</span><span id="tokens-speed" style="margin-left: 5px; opacity: 0.6; font-size: 0.9em;"></span></span></div>
 
@@ -49,10 +63,21 @@
         <div class="input-wrapper">
             <textarea id="userInput" placeholder="Ask LMLocal..." rows="1" autofocus></textarea>
             <div class="input-footer">
-                <button id="contextToggleBtn" class="btn-secondary" title="Include context from active window">
-                    <span class="icon">+</span>
-                </button>
-                <button id="mainBtn">Send</button>
+                <div class="input-footer-left">
+                    <div class="dropdown" id="actionDropdown">
+                        <button type="button" class="btn-action dropdown-trigger" title="AI instructions mode">
+                            <span id="selectedOption">None</span>
+                            <span class="arrow">▾</span>
+                        </button>
+                        <div class="dropdown-menu"></div>
+                    </div>
+                </div>
+                <div class="input-footer-right">
+                    <button id="contextToggleBtn" class="btn-secondary" title="Include context from active window">
+                        <span class="icon">+</span>
+                    </button>
+                    <button id="mainBtn">Send</button>
+                </div>
             </div>
         </div>
     </div>
@@ -65,6 +90,113 @@
             <button id="dialog-confirm" class="btn-main">Clear</button>
         </div>
     </dialog>
+
+    <dialog id="settings-dialog">
+        <div class="modal-header">Settings</div>
+        <div class="modal-body">
+            <form id="settings-form">
+                <div class="settings-group">
+                    <label for="baseUrl" class="settings-label">LM Studio URL</label>
+                    <span class="settings-description">
+                        Base URL of the LM Studio backend. Used to build HTTP requests.
+                    </span>
+                    <input type="url" data-setting="LmStudioBaseUrl" placeholder="http://localhost:1234" required pattern="https?://.+">
+                </div>
+                <div class="settings-group">
+                    <label for="streamTimeout" class="settings-label">Stream inactivity timeout (seconds)</label>
+                    <span class="settings-description">
+                        Max seconds to wait for new data before timing out. Increase for slow local models. Set to 0 to disable timeout.
+                    </span>
+                    <input type="number" data-setting="StreamInactivityTimeoutSeconds" min="0" max="100" value="20" step="1">
+                </div>
+                <div class="settings-group checkbox-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" data-setting="AutoLoadOnStartup">
+                        <span class="checkbox-content-wrapper">
+                            <span class="checkbox-title">Auto-load on startup</span>
+                            <span class="checkbox-description">When true, the application will attempt to connect to LM Studio on startup.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="settings-group checkbox-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" data-setting="EnableHistoryCompression">
+                        <span class="checkbox-content-wrapper">
+                            <span class="checkbox-title">Enable history compression</span>
+                            <span class="checkbox-description">When true, message history is cleaned of markdown and trimmed to reduce token usage.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="settings-group checkbox-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" data-setting="EnableHistoryCompaction">
+                        <span class="checkbox-content-wrapper">
+                            <span class="checkbox-title">Enable history compaction</span>
+                            <span class="checkbox-description">When true, older conversation history is summarized into a concise summary as context limits are approached.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="settings-group checkbox-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" data-setting="EnableChatLogging">
+                        <span class="checkbox-content-wrapper">
+                            <span class="checkbox-title">Enable chat logging</span>
+                            <span class="checkbox-description">Saves chat history locally for future reference. Logs are stored in the extension's local data folder.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label">Theme</label>
+                    <span class="settings-description">
+                        Switch between dark and light modes for the interface.
+                    </span>
+                    <div class="theme-picker">
+                        <label class="radio-item">
+                            <input type="radio" value="0" name="theme" data-setting="Theme" checked>
+                            <span class="radio-label">Dark</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" value="3" name="theme" data-setting="Theme">
+                            <span class="radio-label">Mid-Dark</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" value="2" name="theme" data-setting="Theme">
+                            <span class="radio-label">Mid-Light</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" value="1" name="theme" data-setting="Theme">
+                            <span class="radio-label">Light</span>
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button id="dialog-cancel">Cancel</button>
+            <button id="dialog-confirm" class="btn-main">Save</button>
+        </div>
+    </dialog>
+
+    <dialog id="instructions-dialog">
+        <div class="modal-header">AI instructions & modes</div>
+        <div class="modal-container">
+            <aside class="settings-sidebar"></aside>
+            <div class="modal-body"></div>
+        </div>
+
+        <div class="modal-footer">
+            <button id="dialog-cancel">Cancel</button>
+            <button id="dialog-confirm" class="btn-main">Save</button>
+        </div>
+    </dialog>
+
+    <script type="importmap">
+        {
+          "imports": {
+            "@app/": "https://app.local/js/"
+          }
+        }
+    </script>
 
     <script type="module" src="https://app.local/js/app.js"></script>
 </body>

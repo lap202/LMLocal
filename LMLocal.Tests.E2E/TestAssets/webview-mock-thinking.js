@@ -16,7 +16,7 @@ const __mockBridge = {
         MaxContext: 16384,
         UsedTokens: 0
     }),
-    ExecutePromptAsync: async (prompt) => {
+    ExecutePromptAsync: async (requestJson) => {
         setTimeout(() => {
             _listeners.forEach(fn => fn({
                 data: { Type: 'StreamThought', Payload: 'This is a thought', Count: 5, TokensPerSecond: 1.0 }
@@ -36,7 +36,23 @@ const __mockBridge = {
         }, 50);
     },
     ResetHistoryAsync: async () => {},
-    CopyToClipboardAsync: async (text) => true
+    CopyToClipboardAsync: async (text) => true,
+    GetInstructionsAsync: async () => {
+        console.log('[mock] GetInstructionsAsync called');
+        return JSON.stringify({ tabs: [] });
+    },
+    UpdateInstructionsAsync: async (json) => {
+        console.log('[mock] UpdateInstructionsAsync called');
+        return true;
+    },
+    GetSettingsAsync: async () => {
+        console.log('[mock] GetSettingsAsync called');
+        return JSON.stringify({});
+    },
+    UpdateSettingsAsync: async (json) => {
+        console.log('[mock] UpdateSettingsAsync called');
+        return true;
+    }
 };
 
 function __startMock() {

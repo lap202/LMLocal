@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["Resources/js/*"]
+    }
+  },
+  "include": ["Resources/js/**/*"],
+  "exclude": ["node_modules", "**/bin", "**/obj", "**/CopilotBaseline"]
+}

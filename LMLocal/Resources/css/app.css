@@ -43,6 +43,110 @@
     --active-bg-alpha: rgba(255, 255, 255, 0.12);
 }
 
+[data-theme="light"] {
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --input-bg: #f8f8f8;
+    --border-color: #cccccc;
+    --panel-bg: #f3f3f3;
+    --surface-bg: #ffffff;
+    --muted-color: #767676;
+    --white: #ffffff;
+    --accent-color: #007acc;
+    --user-msg-bg: var(--panel-bg);
+    --ai-msg-bg: var(--surface-bg);
+    --success-color: #388a34;
+    --danger-color: #a1260d;
+    --top-bar-bg: var(--panel-bg);
+    --status-bar-bg: var(--surface-bg);
+    --code-header-bg: #e8e8e8;
+    --strong-text: #000000;
+    --skeleton-grad-1: #f0f0f0;
+    --skeleton-grad-2: #e0e0e0;
+    --link-color: #0058a3;
+    --link-hover: #004b8b;
+    --scrollbar-thumb: #bbbbbb;
+    --btn-icon-color: var(--muted-color);
+    --btn-icon-hover: #333333;
+    --code-inline-bg: rgba(0, 0, 0, 0.05);
+    --code-inline-text: #795e26;
+    --table-zebra: rgba(0, 0, 0, 0.02);
+    --selection-bg: var(--accent-color);
+    --selection-text: var(--white);
+    --dropdown-bg: var(--surface-bg);
+    --dropdown-hover: #e8e8e8;
+    --stop-bg: rgba(161, 38, 13, 0.08);
+    --stop-border: rgba(161, 38, 13, 0.3);
+    --stop-text: #a1260d;
+    --quote-text-color: var(--muted-color);
+    --separator-color: #e0e0e0;
+    --link-visited: #5a109a;
+    --overlay-shadow: rgba(0, 0, 0, 0.15);
+    --hover-bg-alpha: rgba(0, 0, 0, 0.04);
+    --active-bg-alpha: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="mid-light"] {
+    --bg-color: #f3f3f3;
+    --text-color: #333333;
+    --input-bg: #ffffff;
+    --border-color: #d1d1d1;
+    --panel-bg: #e8e8e8;
+    --surface-bg: #eeeeee;
+    --muted-color: #666666;
+    --white: #ffffff;
+    --accent-color: #007acc;
+    --user-msg-bg: #ffffff;
+    --ai-msg-bg: var(--surface-bg);
+    --success-color: #22863a;
+    --danger-color: #d73a49;
+    --top-bar-bg: var(--panel-bg);
+    --status-bar-bg: var(--surface-bg);
+    --code-header-bg: #e1e1e1;
+    --strong-text: #000000;
+    --skeleton-grad-1: #ddd;
+    --skeleton-grad-2: #ccc;
+    --link-color: #0366d6;
+    --link-hover: #005cc5;
+    --link-visited: #6f42c1;
+    --code-inline-bg: rgba(0, 0, 0, 0.05);
+    --code-inline-text: #a31515;
+    --table-zebra: rgba(0, 0, 0, 0.03);
+    --dropdown-bg: #ffffff;
+    --dropdown-hover: #e8e8e8;
+    --stop-bg: rgba(215, 58, 73, 0.1);
+    --stop-border: rgba(215, 58, 73, 0.3);
+    --stop-text: #b31d28;
+    --separator-color: #ccc;
+    --overlay-shadow: rgba(0, 0, 0, 0.1);
+    --hover-bg-alpha: rgba(0, 0, 0, 0.05);
+    --active-bg-alpha: rgba(0, 0, 0, 0.1);
+    --btn-icon-color: #666666;
+    --btn-icon-hover: #000000;
+}
+
+[data-theme="mid-dark"] {
+    --bg-color: #2d2d30;
+    --text-color: #d4d4d4;
+    --input-bg: #3c3c3c;
+    --border-color: #454545;
+    --panel-bg: #333337;
+    --surface-bg: #252526;
+    --top-bar-bg: #333337;
+    --status-bar-bg: #2d2d30;
+    --muted-color: #969696;
+    --white: #ffffff;
+    --accent-color: #007acc;
+    --user-msg-bg: #3e3e42;
+    --ai-msg-bg: #252526;
+    --code-header-bg: #323233;
+    --strong-text: #ffffff;
+    --code-inline-bg: rgba(255, 255, 255, 0.05);
+    --code-inline-text: #ce9178;
+    --btn-icon-color: #cccccc;
+    --btn-icon-hover: #ffffff;
+}
+
 /* ====== Layout and base styles ====== */
 body {
     background-color: var(--bg-color);
@@ -103,10 +207,12 @@ body {
 
 #token-bar-fill {
     width: 100%;
-    height: 0%;
+    height: 100%;
     background: var(--accent-color);
     transition: height 0.4s ease;
     box-shadow: 0 0 4px var(--accent-color);
+    transform-origin: bottom;
+    transform: scaleY(0);
 }
 
 /* ====== Icon buttons ====== */
@@ -128,13 +234,16 @@ body {
 #chat-container {
     flex: 1;
     overflow-y: auto;
-    padding: 15px;
+    padding: 15px 15px 0px 15px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    scroll-behavior: smooth;
 }
 
+.scroll-spacer {
+    height: 15px;
+    flex-shrink: 0;
+}
 
 .message {
     max-width: 90%;
@@ -344,6 +453,23 @@ pre {
     content: "\00a0";
 }
 
+/*.ai-response-container {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}*/
+
+
 /* ====== status ====== */
 #status-bar {
     display: flex;
@@ -392,7 +518,7 @@ pre {
     height: 28px;
     padding: 0 15px 0 12px;
     background: var(--accent-color);
-    color: white;
+    color: var(--white);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -793,10 +919,24 @@ pre {
         display: block;
     }
 
+    .dropdown-content button + button {
+        border-top: 1px solid var(--border-color, --skeleton-grad-2);
+    }
+
 /* ====== Retry button styles ====== */
-#retry-btn.retry-animate {
-    animation: retrySpin 0.5s ease-in-out;
+#retry-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 14px;
+    color: inherit;
+    opacity: 0.7;
 }
+
+    #retry-btn.retry-animate {
+        animation: retrySpin 0.5s ease-in-out;
+    }
 
 @keyframes retrySpin {
     0% {
@@ -890,12 +1030,13 @@ pre {
     gap: 6px;
     transition: background 0.2s ease;
 }
+
     .input-footer button:focus {
         outline: none;
     }
 
     .input-footer button:focus-visible {
-        outline: 2px solid var(--accent-color); 
+        outline: 2px solid var(--accent-color);
         outline-offset: 2px;
         border-radius: 4px;
     }
@@ -912,7 +1053,7 @@ pre {
 }
 
 .input-container .btn-secondary {
-    width: 28px;
+    min-width: 42px;
     height: 28px;
     background: transparent;
     border: none;
@@ -939,21 +1080,21 @@ pre {
     .input-container .btn-secondary:hover {
         filter: brightness(1.1);
         background: var(--hover-bg-alpha);
-        color: var(--white);
+        color: var(--text-color);
     }
 
-.input-container .btn-secondary.active {
-    opacity: 1;
-    background: var(--hover-bg-alpha);
-    color: var(--white);
-}
+    .input-container .btn-secondary.active {
+        opacity: 1;
+        background: var(--hover-bg-alpha);
+        color: var(--text-color);
+    }
 
 
 .input-container .btn-main {
     height: 28px;
     padding: 0 12px;
     background: var(--accent-color);
-    color: var(--white);
+    color: var(--text-color);
     border: none;
     border-radius: 4px;
     font-size: 12px;
@@ -966,7 +1107,110 @@ pre {
         filter: brightness(1.1);
     }
 
-/* ====== Modal styles ====== */
+/* ====== Instructions dropdown  ====== */
+.input-container .input-wrapper:not(.expanded) .input-footer-left {
+    display: none;
+}
+
+.input-container .input-wrapper.expanded .input-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--table-zebra);
+    gap: 8px;
+}
+
+.input-container .input-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    margin-left: 10px;
+}
+
+.input-container .input-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.input-container .dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.input-container .dropdown-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 90px;
+    height: 28px;
+    padding: 0 10px;
+    background: var(--hover-bg-alpha);
+    border: 1px solid var(--separator-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+    .input-container .dropdown-trigger:hover {
+        min-width: 90px;
+        padding: 0 10px;
+        background: var(--active-bg-alpha);
+    }
+
+.input-container .dropdown-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    min-width: 130px;
+    background: var(--dropdown-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 -4px 12px var(--overlay-shadow);
+    z-index: 1000;
+    padding: 4px 0;
+}
+
+.input-container .dropdown.active .dropdown-menu {
+    display: block;
+}
+
+
+.input-container .dropdown-item {
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+    .input-container .dropdown-item:hover {
+        background: var(--dropdown-hover);
+        color: var(--text-color);
+    }
+
+
+.input-container .dropdown-trigger .arrow {
+    font-size: 9px;
+    transition: transform 0.2s ease;
+}
+
+.input-container .dropdown.active .arrow {
+    transform: rotate(180deg);
+}
+
+/* ====== Dialog styles ====== */
 #confirm-dialog {
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
@@ -980,6 +1224,7 @@ pre {
     left: 50%;
     transform: translate(-50%, -50%);
     margin: 0;
+    overflow: hidden;
 }
 
     #confirm-dialog::backdrop {
@@ -987,56 +1232,521 @@ pre {
         backdrop-filter: blur(1px);
     }
 
-.modal-header {
-    padding: 10px 12px;
-    font-size: 11px;
-    font-weight: bold;
-    color: var(--muted-color);
-    border-bottom: 1px solid var(--border-color);
-    background: var(--hover-bg-alpha);
+    #confirm-dialog .modal-header {
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: bold;
+        color: var(--text-color);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--hover-bg-alpha);
+    }
+
+    #confirm-dialog .modal-body {
+        padding: 24px 16px;
+        font-size: 15px;
+        line-height: 1.5;
+        background: var(--bg-color);
+        font-weight: 500;
+    }
+
+    #confirm-dialog .modal-footer {
+        padding: 12px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        border-top: 1px solid var(--border-color);
+        background: var(--surface-bg);
+    }
+
+        #confirm-dialog .modal-footer button {
+            height: 32px;
+            padding: 0 16px;
+            font-size: 14px;
+            border-radius: 4px;
+            color: var(--white);
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+    #confirm-dialog .btn-main {
+        background: var(--accent-color);
+        color: var(--text-color);
+    }
+
+        #confirm-dialog .btn-main:hover {
+            filter: brightness(1.1);
+        }
+
+    #confirm-dialog #dialog-cancel {
+        background: var(--input-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+    }
+
+        #confirm-dialog #dialog-cancel:hover {
+            background: var(--border-color);
+            color: var(--text-color);
+        }
+
+/* ====== Setting dialog styles ====== */
+#settings-dialog {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0;
+    width: 380px;
+    color: var(--text-color);
+    box-shadow: 0 10px 25px var(--overlay-shadow);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    overflow: hidden;
 }
 
-.modal-body {
-    padding: 24px 16px;
+    #settings-dialog::backdrop {
+        background: var(--overlay-shadow);
+        backdrop-filter: blur(1px);
+    }
+
+    #settings-dialog .modal-header {
+        padding: 12px 16px;
+        background: var(--top-bar-bg);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    #settings-dialog .modal-body {
+        padding: 20px;
+        max-height: 70vh;
+        overflow-y: auto;
+        background: var(--bg-color);
+    }
+
+    #settings-dialog .settings-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 20px;
+    }
+
+    #settings-dialog .settings-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--strong-text);
+        margin-bottom: 4px;
+    }
+
+    #settings-dialog .settings-description,
+    #settings-dialog .checkbox-description {
+        font-size: 13px;
+        color: var(--muted-color);
+        line-height: 1.5;
+        margin-bottom: 8px;
+    }
+
+    #settings-dialog input[type="text"],
+    #settings-dialog input[type="number"],
+    #settings-dialog input[type="url"] {
+        background-color: var(--input-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
+        padding: 10px 12px;
+        border-radius: 4px;
+        outline: none;
+        font-size: 14px;
+    }
+
+    #settings-dialog input[type="number"] {
+        max-width: 80px;
+    }
+
+        #settings-dialog input[type="text"]:focus,
+        #settings-dialog input[type="number"]:focus,
+        #settings-dialog input[type="url"]:focus {
+            border-color: var(--accent-color);
+        }
+
+        #settings-dialog input[type="number"]::-webkit-outer-spin-button,
+        #settings-dialog input[type="number"]::-webkit-inner-spin-button {
+            appearance: none;
+        }
+
+    #settings-dialog .checkbox-container {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 10px;
+        cursor: pointer;
+        margin-bottom: 4px;
+    }
+
+        #settings-dialog .checkbox-container input[type="checkbox"] {
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+            margin-top: 2px;
+        }
+
+    #settings-dialog .checkbox-content-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #settings-dialog .checkbox-title {
+        font-size: 15px;
+        color: var(--text-color);
+        font-weight: 500;
+        line-height: 1.3;
+    }
+
+    #settings-dialog .theme-picker {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+    }
+
+    #settings-dialog .radio-item {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        gap: 8px;
+    }
+
+        #settings-dialog .radio-item input[type="radio"] {
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
+
+    #settings-dialog .radio-label {
+        font-size: 14px;
+        color: var(--text-color);
+    }
+
+    #settings-dialog .modal-footer {
+        padding: 12px 16px;
+        background: var(--status-bar-bg);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    #settings-dialog button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+        border: none;
+        min-width: 90px;
+        transition: filter 0.1s;
+    }
+
+    #settings-dialog #dialog-cancel {
+        background: var(--input-bg);
+        color: var(--text-color);
+    }
+
+        #settings-dialog #dialog-cancel:hover {
+            background: var(--border-color);
+        }
+
+    #settings-dialog .btn-main {
+        background: var(--accent-color);
+        color: var(--white);
+    }
+
+        #settings-dialog .btn-main:hover {
+            filter: brightness(1.1);
+        }
+
+    #settings-dialog .modal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #settings-dialog .modal-body::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 4px;
+    }
+
+/* ====== Instructions dialog styles ====== */
+#instructions-dialog {
+    background: var(--surface-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0;
+    width: 700px;
+    max-width: 95vw;
+    height: 550px;
+    box-shadow: 0 8px 24px var(--overlay-shadow);
+    overflow: hidden;
+}
+
+    #instructions-dialog::backdrop {
+        background: var(--overlay-shadow);
+        backdrop-filter: blur(1px);
+    }
+
+    #instructions-dialog .modal-header {
+        padding: 12px 16px;
+        background: var(--top-bar-bg);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    #instructions-dialog .modal-container {
+        display: flex;
+        height: calc(100% - 94px);
+    }
+
+    #instructions-dialog .settings-sidebar {
+        width: 120px;
+        background: var(--panel-bg);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        padding: 8px 0;
+        flex-shrink: 0;
+    }
+
+    #instructions-dialog .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--muted-color);
+        padding: 8px 16px;
+        text-align: left;
+        font-size: 12px;
+        cursor: pointer;
+        border-left: 2px solid transparent;
+        outline: none;
+        transition: background 0.1s, color 0.1s;
+    }
+
+        #instructions-dialog .tab-btn:hover {
+            background: var(--hover-bg-alpha);
+            color: var(--text-color);
+        }
+
+        #instructions-dialog .tab-btn.active {
+            background: var(--active-bg-alpha);
+            color: var(--text-color);
+            border-left: 2px solid var(--accent-color);
+        }
+
+    #instructions-dialog .modal-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: var(--bg-color);
+    }
+
+    #instructions-dialog .tab-content.active {
+        display: block;
+    }
+
+    #instructions-dialog .settings-group {
+        margin-bottom: 24px;
+    }
+
+    #instructions-dialog .settings-label {
+        display: block;
+        color: var(--accent-color);
+        font-size: 13px;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 16px;
+        letter-spacing: 0.6px;
+    }
+
+    #instructions-dialog .checkbox-group,
+    #instructions-dialog .radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    #instructions-dialog .rules-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+@media (min-width: 600px) {
+    .rules-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+#instructions-dialog .checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+}
+
+    #instructions-dialog .checkbox-container input[type="checkbox"],
+    #instructions-dialog .checkbox-container input[type="radio"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border: 1px solid var(--separator-color);
+        background: var(--input-bg);
+        margin-top: 2px;
+        flex-shrink: 0;
+        cursor: pointer;
+        display: grid;
+        place-content: center;
+    }
+
+    #instructions-dialog .checkbox-container input[type="checkbox"] {
+        border-radius: 2px;
+    }
+
+    #instructions-dialog .checkbox-container input[type="radio"] {
+        border-radius: 50%;
+    }
+
+    #instructions-dialog .checkbox-container input:checked {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    #instructions-dialog .checkbox-container input[type="checkbox"]:checked::before {
+        content: "✔";
+        color: var(--text-color);
+        font-size: 9px;
+    }
+
+    #instructions-dialog .checkbox-container input[type="radio"]::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--text-color);
+        transform: scale(0);
+        transition: 0.1s transform ease-in-out;
+    }
+
+    #instructions-dialog .checkbox-container input[type="radio"]:checked::before {
+        transform: scale(1);
+    }
+
+#instructions-dialog .checkbox-content-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+#instructions-dialog .checkbox-title {
+    font-size: 15px;
+    color: var(--text-color);
+    line-height: 1.3;
+    font-weight: 500;
+}
+
+#instructions-dialog .checkbox-description {
     font-size: 13px;
-    line-height: 1.5;
+    color: var(--muted-color);
+    line-height: 1.4;
+    margin-top: 3px;
 }
 
-.modal-footer {
-    padding: 10px 12px;
+#instructions-dialog .modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    border-top: 1px solid var(--border-color);
-    background: var(--surface-bg);
+    background: var(--status-bar-bg);
 }
 
-    .modal-footer button {
-        height: 26px;
-        padding: 0 14px;
-        font-size: 12px;
+    #instructions-dialog .modal-footer button {
+        padding: 8px 16px;
         border-radius: 4px;
+        font-size: 14px;
         cursor: pointer;
-        border: 1px solid transparent;
-        transition: all 0.2s ease;
+        color: var(--white);
+        border: none;
+        min-width: 90px;
+        transition: background 0.1s;
     }
 
-#confirm-dialog .btn-main {
-    background: var(--accent-color);
-    color: var(--white);
+#instructions-dialog #dialog-cancel {
+    background: var(--input-bg);
+    color: var(--text-color);
 }
 
-    #confirm-dialog .btn-main:hover {
+    #instructions-dialog #dialog-cancel:hover {
+        background: var(--border-color);
+    }
+
+#instructions-dialog .btn-main {
+    background: var(--accent-color);
+    color: var(--text-color);
+}
+
+    #instructions-dialog .btn-main:hover {
         filter: brightness(1.1);
     }
 
-#dialog-cancel {
-    background: var(--input-bg);
-    color: var(--text-color);
-    border-color: var(--border-color);
+#instructions-dialog .modal-body::-webkit-scrollbar {
+    width: 10px;
 }
 
-    #dialog-cancel:hover {
-        background: var(--border-color);
-        color: var(--white);
+#instructions-dialog .modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#instructions-dialog .modal-body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 10px;
+    border: 2px solid var(--bg-color);
+}
+
+    #instructions-dialog .modal-body::-webkit-scrollbar-thumb:hover {
+        filter: brightness(1.2);
     }
+
+#instructions-dialog .settings-group.collapsible-group {
+    margin-bottom: 24px;
+}
+
+#instructions-dialog .checkbox-container.group-header {
+    margin-bottom: 12px;
+}
+
+#instructions-dialog .group-header-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+
+    #instructions-dialog .group-header-row .settings-label {
+        margin-bottom: 0;
+        pointer-events: none;
+    }
+
+#instructions-dialog .settings-group.collapsible-group:has(input:checked) .settings-label {
+    color: var(--accent-color);
+}
+
+#instructions-dialog .settings-group.collapsible-group:not(:has(input:checked)) .settings-label {
+    color: var(--muted-color);
+}

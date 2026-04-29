@@ -45,7 +45,7 @@ const __mockBridge = {
     GetStatusAsync: async () => JSON.stringify({
         Status: "SUCCESS", ModelName: "Benchmark Model", MaxContext: 16384, UsedTokens: 0
     }),
-    ExecutePromptAsync: async (prompt) => {
+    ExecutePromptAsync: async (requestJson) => {
         let i = 0;
         window.__streamingState.isStreaming = true;
         window.__streamingState.chunksSent = 0;
@@ -56,13 +56,11 @@ const __mockBridge = {
 
         function sendNext() {
             if (i < chunks.length) {
-                // Send chunk
                 _listeners.forEach(fn => fn({
                     data: { Type: 'StreamContent', Payload: chunks[i], Count: i, TokensPerSecond: 100 }
                 }));
                 window.__streamingState.chunksSent = i + 1;
                 i++;
-                // Delay 1ms to allow browser to yield and UI to process the render event
                 setTimeout(sendNext, 1);
             } else {
                 _listeners.forEach(fn => fn({ data: { Type: 'StreamEnd' } }));
@@ -77,7 +75,23 @@ const __mockBridge = {
     },
     StopExecutionAsync: async () => {},
     ResetHistoryAsync: async () => {},
-    CopyToClipboardAsync: async (text) => true
+    CopyToClipboardAsync: async (text) => true,
+    GetInstructionsAsync: async () => {
+        console.log('[mock] GetInstructionsAsync called');
+        return JSON.stringify({ tabs: [] });
+    },
+    UpdateInstructionsAsync: async (json) => {
+        console.log('[mock] UpdateInstructionsAsync called');
+        return true;
+    },
+    GetSettingsAsync: async () => {
+        console.log('[mock] GetSettingsAsync called');
+        return JSON.stringify({});
+    },
+    UpdateSettingsAsync: async (json) => {
+        console.log('[mock] UpdateSettingsAsync called');
+        return true;
+    }
 };
 
 function __startMock() {

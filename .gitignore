@@ -3,3 +3,6 @@ bin/
 obj/
 packages/
 *.user
+TestResults/
+LMLocal/frontend.md
+docs/
