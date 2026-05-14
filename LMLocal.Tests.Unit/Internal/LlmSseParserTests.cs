@@ -1,56 +1,58 @@
-using LMLocal.Infrastructure.Lm;
+using LMLocal.Models;
+using LMLocal.Services;
 using NUnit.Framework;
-using System;
 
-namespace LMLocal.Tests.Unit.Internal
+namespace LMLocal.Tests.Unit
 {
     [TestFixture]
     public class LlmSseParserTests
     {
         [Test]
-        public void ExtractDelta_ReturnsNull_OnDoneLine()
+        public void ExtractDelta_ReturnsCompletion_OnDoneLine()
         {
-            int tokens = 0;
-            var result = LlmSseParser.ExtractDelta("data: [DONE]", ref tokens);
-            Assert.That(result.IsEmpty, Is.True);
+            var result = LlmSseParser.ExtractDelta("data: [DONE]");
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result is CompletionStreamChunk, Is.True);
+            var completion = (CompletionStreamChunk)result;
+            Assert.That(completion.FinishReason, Is.EqualTo("stop"));
         }
 
         [Test]
-        public void ExtractDelta_ParsesDeltaAndIncrementsTokens()
+        public void ExtractDelta_ParsesDeltaContent()
         {
-            int tokens = 0;
             var json = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}]}";
-            var result = LlmSseParser.ExtractDelta(json, ref tokens);
-            Assert.That(result.Text, Is.EqualTo("hi"));
-            Assert.That(tokens, Is.EqualTo(1));
+            var result = LlmSseParser.ExtractDelta(json);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result is TextStreamChunk, Is.True);
+            var chunk = (TextStreamChunk)result;
+            Assert.That(chunk.Text, Is.EqualTo("hi"));
+            Assert.That(chunk.Kind, Is.EqualTo(ChunkKind.Content));
         }
 
         [Test]
-        public void ExtractDelta_UpdatesTokensFromUsage()
+        public void ExtractDelta_ReturnsUsageInCompletionChunk()
         {
-            int tokens = 0;
-            var json = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}],\"usage\":{\"total_tokens\":42}}";
-            var result = LlmSseParser.ExtractDelta(json, ref tokens);
-            Assert.That(result.Text, Is.EqualTo("hi"));
-            Assert.That(tokens, Is.EqualTo(42));
+            var json = "data: {\"choices\":[],\"usage\":{\"total_tokens\":42}}";
+            var result = LlmSseParser.ExtractDelta(json);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result is CompletionStreamChunk, Is.True);
+            var completion = (CompletionStreamChunk)result;
+            Assert.That(completion.TotalTokens, Is.EqualTo(42));
         }
 
         [Test]
         public void ExtractDelta_ReturnsNull_OnMalformedJson()
         {
-            int tokens = 0;
-            Assert.That(() =>
-                LlmSseParser.ExtractDelta("data: {not a json}", ref tokens),
-                Throws.InstanceOf<Exception>());
+            var result = LlmSseParser.ExtractDelta("data: {not a json}");
+            Assert.That(result, Is.Null);
         }
 
         [Test]
         public void ExtractDelta_ReturnsNull_WhenNoChoices()
         {
-            int tokens = 0;
             var json = "data: {\"choices\":[]}";
-            var result = LlmSseParser.ExtractDelta(json, ref tokens);
-            Assert.That(result.IsEmpty, Is.True);
+            var result = LlmSseParser.ExtractDelta(json);
+            Assert.That(result, Is.Null);
         }
     }
 }

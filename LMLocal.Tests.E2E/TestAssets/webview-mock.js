@@ -3,16 +3,36 @@ const __mockBridge = {
         addEventListener: () => {},
         removeEventListener: () => {}
     },
-    GetStatusAsync: async () => {
-        console.log('[mock] GetStatusAsync called');
+    ListModelsAsync: async () => {
+        console.log('[mock] ListModelsAsync called');
         const result = JSON.stringify({
-            Status: "SUCCESS",
-            ModelName: "Test Model",
-            MaxContext: 16384,
-            UsedTokens: 0
+            models: [
+                {
+                    id: "test-model-1",
+                    name: "Test Model",
+                    maxTokens: 16384,
+                    supportsMaxTokens: true,
+                    isActive: false,
+                    supportsToolUse: null
+                }
+            ],
+            hasActiveModel: true,
+            activeModel: {
+                id: "test-model-instance",
+                name: "Test Model",
+                maxTokens: 16384,
+                supportsMaxTokens: true,
+                isActive: true,
+                supportsToolUse: null
+            },
+            error: null
         });
-        console.log('[mock] GetStatusAsync returning:', result);
+        console.log('[mock] ListModelsAsync returning:', result);
         return result;
+    },
+    SetActiveModelAsync: async (modelId, contextLength) => {
+        console.log('[mock] SetActiveModelAsync called with:', modelId, contextLength);
+        return true;
     },
     ExecutePromptAsync: async (requestJson) => {},
     StopExecutionAsync: async () => {},
@@ -28,7 +48,7 @@ const __mockBridge = {
     },
     GetSettingsAsync: async () => {
         console.log('[mock] GetSettingsAsync called');
-        return JSON.stringify({});
+        return JSON.stringify({ AutoLoadOnStartup: true });
     },
     UpdateSettingsAsync: async (json) => {
         console.log('[mock] UpdateSettingsAsync called');

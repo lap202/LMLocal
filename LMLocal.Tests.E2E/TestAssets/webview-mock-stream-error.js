@@ -11,16 +11,36 @@ const __mockBridge = {
             if (i !== -1) _listeners.splice(i, 1);
         }
     },
-    GetStatusAsync: async () => JSON.stringify({
-        Status: "SUCCESS",
-        ModelName: "Test Model",
-        MaxContext: 16384,
-        UsedTokens: 0
+    ListModelsAsync: async () => JSON.stringify({
+        models: [
+            {
+                id: "test-model-1",
+                name: "Test Model",
+                maxTokens: 16384,
+                supportsMaxTokens: true,
+                isActive: false,
+                supportsToolUse: null
+            }
+        ],
+        hasActiveModel: true,
+        activeModel: {
+            id: "test-model-instance",
+            name: "Test Model",
+            maxTokens: 16384,
+            supportsMaxTokens: true,
+            isActive: true,
+            supportsToolUse: null
+        },
+        error: null
     }),
+    SetActiveModelAsync: async (modelId, contextLength) => {
+        console.log('[mock] SetActiveModelAsync called with:', modelId, contextLength);
+        return true;
+    },
     ExecutePromptAsync: async (requestJson) => {
         setTimeout(() => {
             _listeners.forEach(fn => fn({
-                data: { Type: 'StreamError', Payload: 'model crashed' }
+                data: { Type: 'ChatSessionError', Payload: 'model crashed' }
             }));
         }, 50);
     },
@@ -37,7 +57,7 @@ const __mockBridge = {
     },
     GetSettingsAsync: async () => {
         console.log('[mock] GetSettingsAsync called');
-        return JSON.stringify({});
+        return JSON.stringify({ AutoLoadOnStartup: true });
     },
     UpdateSettingsAsync: async (json) => {
         console.log('[mock] UpdateSettingsAsync called');

@@ -12,7 +12,7 @@ export function attachCopyButton(containerElem) {
         const codeElement = pre.querySelector('code');
         if (!codeElement) return;
 
-        let lang = 'code';
+        let lang = '';
         for (const cls of codeElement.classList) {
             if (cls.startsWith('language-')) {
                 lang = cls.slice(9);

@@ -1,55 +1,16 @@
-import { AppStatus, Config } from '@app/store/app.globals.js';
+import { AppStatus } from '@app/store/app.status.js';
 import { appSelectors } from '@app/store/app.selectors.js';
 import appStore from '@app/store/app.store.js';
 import modelStore from '@app/store/model.store.js';
-import bridgeClient from '@app/api/bridge.client.js';
 import instructionsStore from '@app/store/instructions.store.js';
-import settingsStore from '@app/store/settings.store.js';
-import { ChunkBuffer } from '@app/store/chunk.buffer.js';
+import appDataService from '@app/services/app.data.service.js';
+import { startupManager } from '@app/store/startup.manager.js';
+import bridgeClient from '@app/api/bridge.client.js';
 
 /**
  * AppManager - central controller for streaming and UI state.
  */
 class AppManager {
-    constructor() {
-        this.contentBuffer = new ChunkBuffer(Config.STREAM_BUFFER_INTERVAL_MS);
-        this.thoughtBuffer = new ChunkBuffer(Config.STREAM_BUFFER_INTERVAL_MS);
-    }
-
-    async loadStatus() {
-        try {
-            appStore.setState({
-                status: AppStatus.CONNECTING,
-                error: "",
-                tokenSpeed: 0
-            });
-
-            const response = await bridgeClient.getStatusAsync();
-            if (response.Status === "SUCCESS") {
-                modelStore.setState({
-                    modelName: response.ModelName,
-                    modelId: response.ModelId,
-                    tokenMax: response.MaxContext || Config.MAX_TOKENS,
-                    modelDetails: response.ModelDetails
-                });
-                appStore.setState({
-                    status: AppStatus.IDLE,
-                    tokenUsed: response.UsedTokens ?? 0,
-                    tokenSpeed: 0,
-                    error: null
-                });
-                await appManager.getInstructions();
-            } else {
-                appStore.setState({
-                    status: AppStatus.OFFLINE,
-                    error: response.ErrorMessage,
-                    tokenSpeed: 0
-                });
-            }
-        } catch (e) {
-            this.onFatalError("Bridge host object unreachable.");
-        }
-    }
 
     async onAppInit() {
         appStore.setState({ status: AppStatus.CONNECTING, accumulatedText: "", accumulatedThoughtText: "", error: null });
@@ -66,18 +27,16 @@ class AppManager {
                 return;
             }
 
-            await this.loadStatus();
+            await startupManager.initialize();
+
         } catch (e) {
-            console.error("Settings load failed:", e);
-            await this.loadStatus();
+            console.error("onAppInit load failed:", e);
+        } finally {
+            await this.getInstructions();
         }
     }
 
     onFatalError(message) {
-
-        this.contentBuffer.reset();
-        this.thoughtBuffer.reset();
-
         appStore.setState({
             status: AppStatus.OFFLINE,
             error: message,
@@ -85,19 +44,13 @@ class AppManager {
         });
     }
 
-    onCompactionStart() {
-        appStore.setState({ status: AppStatus.COMPACTING });
-    }
-
-    onCompactionEnd() {
-        if (appStore.getState().status !== AppStatus.ERROR) {
-            appStore.setState({ status: AppStatus.IDLE });
-        }
+    async reloadActiveModel() {
+        await startupManager.initialize();
     }
 
     async performSendMessage(text, hasContent, instructionsMode) {
         const cleanText = (text || '').trim();
-        if (!cleanText || !appSelectors.canSend(appStore.getState())) return;
+        if (!cleanText || !appSelectors.canSend(appStore.getState().status)) return;
 
         appStore.setState({ status: AppStatus.PROCESSING, accumulatedText: "", accumulatedThoughtText: "", error: null, userMessage: cleanText });
 
@@ -127,10 +80,10 @@ class AppManager {
         return true;
     }
 
-    async performStop() {
-        if (!appSelectors.isGenerating(appStore.getState())) return;
+    async performStop(text) {
+        if (!appSelectors.isBusy(appStore.getState().status)) return;
 
-        appStore.setState({ status: AppStatus.STOPPING });
+        appStore.setState({ status: AppStatus.STOPPING, userMessage: text });
 
         try {
             await bridgeClient.stopExecutionAsync();
@@ -141,11 +94,16 @@ class AppManager {
     }
 
     async performCopyCode(text) {
-        try { return await bridgeClient.copyToClipboardAsync(text); } catch { return false; }
+        try {
+            return await bridgeClient.copyToClipboardAsync(text);
+        } catch (e) {
+            console.error("Copy failed", e);
+            return false;
+        }
     }
 
     async performClearChat() {
-        if (!appSelectors.isBusy(appStore.getState())) {
+        if (!appSelectors.isBusy(appStore.getState().status)) {
 
             appStore.setState({
                 status: AppStatus.CLEARING,
@@ -174,173 +132,24 @@ class AppManager {
                     tokenUsed: 0,
                     tokenSpeed: 0
                 });
-            } finally {
-                this.contentBuffer.reset();
-                this.thoughtBuffer.reset();
             }
         }
     }
 
-    handleStreamThought(chunk, count, speed) {
-        const status = appStore.getState().status;
-        if ([AppStatus.STOPPING, AppStatus.ERROR, AppStatus.OFFLINE].includes(status)) return;
-
-        if (status !== AppStatus.THINKING && status === AppStatus.PROCESSING) {
-            appStore.setState({ status: AppStatus.THINKING });
-        }
-
-        this.thoughtBuffer.append(chunk);
-        const now = Date.now();
-        if (this.thoughtBuffer.shouldFlush(now)) {
-            const flushed = this.thoughtBuffer.flush();
-            appStore.setState(prevState => ({
-                status: AppStatus.THINKING,
-                accumulatedThoughtText: prevState.accumulatedThoughtText + flushed,
-                tokenUsed: count,
-                tokenSpeed: speed
-            }));
-        }
-    }
-
-    handleStreamContent(chunk, count, speed) {
-        const status = appStore.getState().status;
-
-        if ([AppStatus.STOPPING, AppStatus.ERROR, AppStatus.OFFLINE].includes(status)) return;
-
-        if (status !== AppStatus.STREAMING && status === AppStatus.THINKING) {
-            appStore.setState({ status: AppStatus.STREAMING });
-        }
-
-        this.contentBuffer.append(chunk);
-        const now = Date.now();
-        if (this.contentBuffer.shouldFlush(now)) {
-            const flushed = this.contentBuffer.flush();
-            appStore.setState(prevState => ({
-                status: AppStatus.STREAMING,
-                accumulatedText: prevState.accumulatedText + flushed,
-                tokenUsed: count,
-                tokenSpeed: speed
-            }));
-        }
-    }
-
-    handleStreamEnd() {
-        const status = appStore.getState().status;
-
-        if ([AppStatus.ERROR, AppStatus.OFFLINE].includes(status)) {
-            this.contentBuffer.reset();
-            this.thoughtBuffer.reset();
-            return;
-        }
-
-        if (status === AppStatus.STOPPING) {
-            this.contentBuffer.reset();
-            this.thoughtBuffer.reset();
-            appStore.setState({
-                status: AppStatus.IDLE,
-                tokenSpeed: 0
-            });
-            return;
-        }
-
-        if (!this.thoughtBuffer.isEmpty()) {
-            const flushedThought = this.thoughtBuffer.flush();
-            appStore.setState(prevState => ({
-                accumulatedThoughtText: prevState.accumulatedThoughtText + flushedThought
-            }));
-        }
-
-        if (!this.contentBuffer.isEmpty()) {
-            const flushed = this.contentBuffer.flush();
-            appStore.setState(prevState => ({
-                accumulatedText: prevState.accumulatedText + flushed
-            }));
-        }
-
-        appStore.setState({
-            status: AppStatus.FINISHING,
-        });
-    }
-
-    handleHighlightingEnd() {
-        Promise.resolve().then(() => {
-            if (appStore.getState().status === AppStatus.IDLE) return;
-            appStore.setState({
-                status: AppStatus.IDLE,
-                tokenSpeed: 0
-            });
-        });
-    }
-
-    handleStreamError(message) {
-        this.contentBuffer.reset();
-        this.thoughtBuffer.reset();
-
-        appStore.setState({
-            status: AppStatus.ERROR,
-            error: message,
-            tokenSpeed: 0
-        });
-    }
-
     async getInstructions() {
-        instructionsStore.setState({
-            loading: true,
-            error: null
-        });
-
-        try {
-            const instructions = await bridgeClient.getInstructions();
-            instructionsStore.setState({
-                instructions,
-                loading: false,
-                error: null
-            });
-            return instructions;
-        } catch (error) {
-            console.error('Failed to load instructions:', error);
-            instructionsStore.setState({
-                loading: false,
-                error: "Failed to load instructions"
-            });
-            throw error;
-        }
+        return await appDataService.getInstructions();
     }
 
     async updateInstructions(json) {
-        instructionsStore.setState({
-            loading: true,
-            error: null
-        });
-
-        try {
-            const result = await bridgeClient.updateInstructions(json);
-            instructionsStore.setState({
-                instructions: json,
-                loading: false,
-                error: null
-            });
-            return result;
-        } catch (error) {
-            console.error('Failed to update instructions:', error);
-            instructionsStore.setState({
-                loading: false,
-                error: "Failed to update instructions"
-            });
-            throw error;
-        }
+        return await appDataService.updateInstructions(json);
     }
 
     async getSettings() {
-        const settings = await bridgeClient.getSettingsAsync();
-        settingsStore.setState(settings);
-        return settings;
+        return await appDataService.getSettings();
     }
 
     async updateSettings(settings) {
-        const result = await bridgeClient.updateSettingsAsync(settings);
-        settingsStore.setState(settings);
-        return result;
+        return await appDataService.updateSettings(settings);
     }
 }
 

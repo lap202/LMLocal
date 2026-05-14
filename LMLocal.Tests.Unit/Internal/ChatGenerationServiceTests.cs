@@ -3,32 +3,47 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using LMLocal.Infrastructure;
-using LMLocal.Services;
+using LMLocal.Infrastructure.Api;
+using LMLocal.Infrastructure.Api.Responses;
 using LMLocal.Models;
-using LMLocal.Infrastructure.Lm;
+using LMLocal.Services;
 using Moq;
-using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using LMLocal.Infrastructure.Lm.Responses;
 
-namespace LMLocal.Tests.Unit.Internal
+namespace LMLocal.Tests.Unit
 {
     [TestFixture]
     public class ChatGenerationServiceTests
     {
-        private Mock<ILMStudioClient> _clientMock;
+        private Mock<IOpenApiAdapter> _clientMock;
         private Mock<IChatHistoryManager> _historyMock;
         private Mock<IHistoryCompactor> _compactorMock;
-        private ChatGenerationService _service;
+        private Mock<ISettingsManager> _settingsMock;
+        private Mock<IStreamProcessor> _mockProcessor;
+        private Mock<IStreamProcessorFactory> _mockFactory;
+        private ChatStreamService _service;
 
         [SetUp]
         public void SetUp()
         {
-            _clientMock = new Mock<ILMStudioClient>();
+            _clientMock = new Mock<IOpenApiAdapter>();
             _historyMock = new Mock<IChatHistoryManager>();
             _compactorMock = new Mock<IHistoryCompactor>();
-            _service = new ChatGenerationService(_clientMock.Object, _historyMock.Object, _compactorMock.Object);
+            _settingsMock = new Mock<ISettingsManager>();
+            _settingsMock.Setup(s => s.WindowSeconds).Returns(5);
+            _settingsMock.Setup(s => s.BatchIntervalMs).Returns(100);
+            _settingsMock.Setup(s => s.Current).Returns(new AppSettings());
+
+            var activeModelContext = new ActiveModelContext();
+            _mockProcessor = new Mock<IStreamProcessor>();
+            // Ensure the processor returns a non-null completion result to avoid NullReference during awaits in service code
+            _mockProcessor.Setup(p => p.ProcessStreamAsync(It.IsAny<System.IO.Stream>(), It.IsAny<CancellationToken>(), It.IsAny<Func<TextStreamChunk, TokenGenerationStats, Task>>(), It.IsAny<int>()))
+                .ReturnsAsync(new StreamCompletionResult { ContentResponse = "", WasCancelled = false });
+
+            _mockFactory = new Mock<IStreamProcessorFactory>();
+            _mockFactory.Setup(f => f.Create(It.IsAny<System.Threading.CancellationTokenSource>())).Returns(_mockProcessor.Object);
+
+            _service = new ChatStreamService(_clientMock.Object, _historyMock.Object, _settingsMock.Object, _mockFactory.Object);
         }
 
 
@@ -76,13 +91,13 @@ namespace LMLocal.Tests.Unit.Internal
             public override void SetLength(long value) => throw new NotSupportedException();
         }
 
-        private class FakeClient : ILMStudioClient
+        private class FakeClient : IOpenApiAdapter
         {
             private readonly Stream _stream;
             public FakeClient(Stream s) => _stream = s;
 
-            public Task<ListModelsResponse> ListModelsAsync(CancellationToken cancellationToken) 
-                => Task.FromResult(new ListModelsResponse());
+            public Task<string> ListModelsRawAsync(string endpoint, CancellationToken cancellationToken)
+                => Task.FromResult(string.Empty);
 
             public Task<StreamingResponse> SendChatStreamingAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken)
             {
@@ -105,12 +120,19 @@ namespace LMLocal.Tests.Unit.Internal
             public IReadOnlyList<ChatMessage> GetHistoryCopy() => new List<ChatMessage>();
             public bool ReplaceHistory(string summary, IEnumerable<ChatMessage> recent, int expectedSize) => true;
             public List<ChatMessage> BuildUserMessagesWithHistory(string userPrompt, string includedContent = null, string additionalSystemPrompt = null) => new List<ChatMessage>();
+
+            public void AddToolExecutionResultMessage(ChatMessage message)
+            {
+            }
+
+            public void AddAssistantToolRequestMessage(IReadOnlyList<ToolCallRecord> toolCalls)
+            {
+            }
         }
 
         private class DummyCompactor : IHistoryCompactor
         {
-            public Task CompactIfNeededAsync(ILMStudioClient client, string modelId, CancellationToken token) => Task.CompletedTask;
-            public void SetMaxContext(int max) { }
+            public Task CompactIfNeededAsync(string modelId, CancellationToken token) => Task.CompletedTask;
             public bool NeedsCompaction() => false;
         }
 
@@ -120,9 +142,20 @@ namespace LMLocal.Tests.Unit.Internal
             var blocking = new BlockingStream();
             var client = new FakeClient(blocking);
             var history = new DummyHistory();
-            var compactor = new DummyCompactor();
 
-            var svc = new ChatGenerationService(client, history, compactor);
+            var settingsMock = new Mock<ISettingsManager>();
+            settingsMock.Setup(s => s.WindowSeconds).Returns(5);
+            settingsMock.Setup(s => s.BatchIntervalMs).Returns(100);
+            settingsMock.Setup(s => s.Current).Returns(new AppSettings());
+
+            var mockProcessor = new Mock<IStreamProcessor>();
+            // Ensure the processor returns a non-null completion result to avoid NullReference during awaits in service code
+            mockProcessor.Setup(p => p.ProcessStreamAsync(It.IsAny<System.IO.Stream>(), It.IsAny<CancellationToken>(), It.IsAny<Func<TextStreamChunk, TokenGenerationStats, Task>>(), It.IsAny<int>()))
+                .ReturnsAsync(new StreamCompletionResult { ContentResponse = "", WasCancelled = false });
+
+            var mockFactory = new Mock<IStreamProcessorFactory>();
+            mockFactory.Setup(f => f.Create(It.IsAny<System.Threading.CancellationTokenSource>())).Returns(mockProcessor.Object);
+            var svc = new ChatStreamService(client, history, settingsMock.Object, mockFactory.Object);
 
             var context = new GenerateStreamContext
             {
@@ -132,16 +165,17 @@ namespace LMLocal.Tests.Unit.Internal
                 ModelId = null
             };
 
-            var genTask = svc.GenerateStreamAsync(context, async (c, s) => { await Task.CompletedTask; }, async err => { await Task.CompletedTask; }, async () => { await Task.CompletedTask; });
+            var cts = new CancellationTokenSource();
+            var genTask = svc.GenerateStreamAsync(context, (c, s) => Task.CompletedTask, completion => Task.CompletedTask, cts.Token);
 
             await Task.Delay(50);
 
-            svc.StopExecution();
+            cts.Cancel();
 
             blocking.ReleaseAndClose();
 
             var completed = await Task.WhenAny(genTask, Task.Delay(3000)) == genTask;
-            Assert.That(completed, Is.True, "GenerateStreamAsync should complete after StopExecution");
+            Assert.That(completed, Is.True, "GenerateStreamAsync should complete after cancellation");
             Assert.That(genTask.IsFaulted, Is.False, genTask.Exception?.ToString());
         }
 
@@ -153,23 +187,6 @@ namespace LMLocal.Tests.Unit.Internal
             _historyMock.Verify(h => h.Clear(), Times.Once);
         }
 
-        [Test]
-        public void SetMaxContext_DelegatesToCompactor()
-        {
-            _service.SetMaxContext(123);
-            _compactorMock.Verify(c => c.SetMaxContext(123), Times.Once);
-        }
-
-        [Test]
-        public void StopExecution_CancelsAndDisposesToken()
-        {
-            var cts = new CancellationTokenSource();
-            typeof(ChatGenerationService)
-                .GetField("_currentCts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .SetValue(_service, cts);
-            _service.StopExecution();
-            Assert.That(cts.IsCancellationRequested, Is.True);
-        }
 
         [Test]
         public async Task GenerateStreamAsync_AddsUserMessage_AndAssistantMessage()
@@ -187,10 +204,9 @@ namespace LMLocal.Tests.Unit.Internal
 
             _historyMock.Setup(h => h.AddUserMessage(It.IsAny<string>()));
             _historyMock.Setup(h => h.AddAssistantMessage(It.IsAny<string>()));
-            _compactorMock.Setup(c => c.CompactIfNeededAsync(_clientMock.Object, It.IsAny<string>(), CancellationToken.None)).Returns(Task.CompletedTask);
+            _compactorMock.Setup(c => c.CompactIfNeededAsync(It.IsAny<string>(), CancellationToken.None)).Returns(Task.CompletedTask);
 
-            Task onChunk(StreamChunk chunk, TokenGenerationStats t) => Task.CompletedTask;
-            Task onError(string s) => Task.CompletedTask;
+            Task onChunk(TextStreamChunk chunk, TokenGenerationStats t) => Task.CompletedTask;
 
             var context = new GenerateStreamContext
             {
@@ -200,7 +216,7 @@ namespace LMLocal.Tests.Unit.Internal
                 ModelId = null
             };
 
-            await _service.GenerateStreamAsync(context, onChunk, onError, async () => { await Task.CompletedTask; });
+            await _service.GenerateStreamAsync(context, onChunk, completion => Task.CompletedTask, CancellationToken.None);
 
             _historyMock.Verify(h => h.AddUserMessage("prompt"), Times.Once);
         }

@@ -3,10 +3,16 @@ const __mockBridge = {
         addEventListener: () => {},
         removeEventListener: () => {}
     },
-    GetStatusAsync: async () => JSON.stringify({
-        Status: "ERROR",
-        ErrorMessage: "LM Studio unreachable"
+    ListModelsAsync: async () => JSON.stringify({
+        models: [],
+        hasActiveModel: false,
+        activeModel: null,
+        error: "LM Studio unreachable"
     }),
+    SetActiveModelAsync: async (modelId, contextLength) => {
+        console.log('[mock] SetActiveModelAsync called with:', modelId, contextLength);
+        return false;
+    },
     ExecutePromptAsync: async (requestJson) => {},
     StopExecutionAsync: async () => {},
     ResetHistoryAsync: async () => {},
@@ -21,7 +27,7 @@ const __mockBridge = {
     },
     GetSettingsAsync: async () => {
         console.log('[mock] GetSettingsAsync called');
-        return JSON.stringify({});
+        return JSON.stringify({ AutoLoadOnStartup: true });
     },
     UpdateSettingsAsync: async (json) => {
         console.log('[mock] UpdateSettingsAsync called');

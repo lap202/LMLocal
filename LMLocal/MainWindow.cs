@@ -44,7 +44,9 @@ namespace LMLocal
             if (e.Key == Key.Home || e.Key == Key.End || e.Key == Key.Left || e.Key == Key.Right)
             {
                 int keyCode = GetKeyCode(e.Key);
-                _control?.SendKeyToWebView(keyCode);
+                bool shift = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+
+                _control?.SendKeyToWebView(keyCode, shift);
                 e.Handled = true;
             }
         }

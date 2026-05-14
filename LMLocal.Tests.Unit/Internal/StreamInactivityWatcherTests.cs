@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using LMLocal.Services;
 using NUnit.Framework;
 
-namespace LMLocal.Tests.Unit.Internal
+namespace LMLocal.Tests.Unit
 {
     [TestFixture]
     public class StreamInactivityWatcherTests

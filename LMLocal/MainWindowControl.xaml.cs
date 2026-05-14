@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -6,8 +7,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using LMLocal.Common;
+using LMLocal.Infrastructure.DependencyInjection;
+using LMLocal.Infrastructure.Vs;
+using LMLocal.Infrastructure.Vs.Abstractions;
 using LMLocal.Infrastructure.WebView;
 using LMLocal.Services;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.Web.WebView2.Core;
 
 namespace LMLocal
@@ -40,19 +45,26 @@ namespace LMLocal
 
             _webViewInitializing = true;
 
+            var settingsManager = ServiceConfiguration.GetService<ISettingsManager>();
+            await settingsManager.LoadAsync();
+
+            var webViewBridgeFactory = ServiceConfiguration.GetService<IWebViewBridgeFactory>();
+
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+
+
             try
             {
-                await _envLock.WaitAsync();
 
-                var settingsManager = new SettingsManager();
-                await settingsManager.LoadAsync();
+                await _envLock.WaitAsync();
 
                 try
                 {
                     if (sharedEnvironment == null)
                     {
                         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        string userDataFolder = Path.Combine(localAppData, Defaults.LocalAppDataFolder, Defaults.WebViewUserDataFolder);
+                        string userDataFolder = Path.Combine(localAppData, settingsManager.LocalAppDataFolder, settingsManager.WebViewUserDataFolder);
                         Directory.CreateDirectory(userDataFolder);
                         sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
                     }
@@ -62,18 +74,19 @@ namespace LMLocal
                     _envLock.Release();
                 }
 
-
                 await chatBrowser.EnsureCoreWebView2Async(sharedEnvironment);
 
                 string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 string resourcesPath = Path.Combine(assemblyDir, "Resources");
                 chatBrowser.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    Defaults.VirtualHostName,
+                    settingsManager.VirtualHostName,
                     resourcesPath,
                     CoreWebView2HostResourceAccessKind.Allow
                 );
 
-                chatBrowser.CoreWebView2.AddHostObjectToScript("bridge", new WebViewBridge(chatBrowser, settingsManager));
+
+                var bridge = webViewBridgeFactory.CreateBridge(chatBrowser.CoreWebView2);
+                chatBrowser.CoreWebView2.AddHostObjectToScript("bridge", bridge);
 
                 chatBrowser.HorizontalAlignment = HorizontalAlignment.Stretch;
                 chatBrowser.VerticalAlignment = VerticalAlignment.Stretch;
@@ -83,10 +96,10 @@ namespace LMLocal
                 chatBrowser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
 #endif
 
-
                 chatBrowser.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
 
-                string html = GetHtmlFromResource(Defaults.HtmlResourcePath);
+                string html = GetHtmlFromResource(settingsManager.HtmlResourcePath);
+
                 chatBrowser.NavigateToString(html);
 
                 _webViewInitialized = true;
@@ -125,7 +138,7 @@ namespace LMLocal
             }
         }
 
-        public void SendKeyToWebView(int keyCode)
+        public void SendKeyToWebView(int keyCode, bool shift)
         {
             if (chatBrowser?.CoreWebView2 == null || !_webViewInitialized)
                 return;
@@ -133,38 +146,71 @@ namespace LMLocal
             chatBrowser.Focus();
 
             string keyName = GetKeyName(keyCode);
+            if (keyName == null)
+                return;
 
-            if (keyName != null)
-            {
-                string script = $@"
-                    (function() {{
-                        const textarea = document.getElementById('userInput');
-                        if (!textarea) return;
+            string script = $@"
+    (function() {{
+        const el = document.activeElement;
+        if (!el || !('selectionStart' in el)) return;
 
-                        const currentPos = textarea.selectionStart;
-                        const textLength = textarea.value.length;
+        const isShift = {(shift ? "true" : "false")};
+        const key = '{keyName}';
 
-                        if ('{keyName}' === 'Home') {{
-                            const lineStart = textarea.value.lastIndexOf('\n', currentPos - 1) + 1;
-                            textarea.setSelectionRange(lineStart, lineStart);
-                        }} else if ('{keyName}' === 'End') {{
-                            const lineEnd = textarea.value.indexOf('\n', currentPos);
-                            const actualLineEnd = lineEnd === -1 ? textLength : lineEnd;
-                            textarea.setSelectionRange(actualLineEnd, actualLineEnd);
-                        }} else if ('{keyName}' === 'ArrowLeft') {{
-                            if (currentPos > 0) {{
-                                textarea.setSelectionRange(currentPos - 1, currentPos - 1);
-                            }}
-                        }} else if ('{keyName}' === 'ArrowRight') {{
-                            if (currentPos < textLength) {{
-                                textarea.setSelectionRange(currentPos + 1, currentPos + 1);
-                            }}
-                        }}
-                    }})();
-                ";
-                _ = chatBrowser.CoreWebView2.ExecuteScriptAsync(script);
-            }
+        const caret = el.selectionDirection === 'backward'
+            ? el.selectionStart
+            : el.selectionEnd;
+
+        const text = el.value;
+        const textLength = text.length;
+
+        let anchor = el.dataset.selAnchor
+            ? parseInt(el.dataset.selAnchor, 10)
+            : caret;
+
+        function getLineStart(pos) {{
+            const idx = text.lastIndexOf('\n', pos - 1);
+            return idx === -1 ? 0 : idx + 1;
+        }}
+
+        function getLineEnd(pos) {{
+            const idx = text.indexOf('\n', pos);
+            return idx === -1 ? textLength : idx;
+        }}
+
+        let newPos = caret;
+
+        if (key === 'Home') {{
+            newPos = getLineStart(caret);
+        }} else if (key === 'End') {{
+            newPos = getLineEnd(caret);
+        }} else if (key === 'ArrowLeft') {{
+            if (caret > 0) newPos = caret - 1;
+        }} else if (key === 'ArrowRight') {{
+            if (caret < textLength) newPos = caret + 1;
+        }} else {{
+            return;
+        }}
+
+        if (!isShift) {{
+            delete el.dataset.selAnchor;
+            el.setSelectionRange(newPos, newPos, 'none');
+        }} else {{
+            if (!el.dataset.selAnchor) {{
+                el.dataset.selAnchor = anchor;
+            }}
+            const start = Math.min(anchor, newPos);
+            const end   = Math.max(anchor, newPos);
+            const direction = anchor <= newPos ? 'forward' : 'backward';
+            el.setSelectionRange(start, end, direction);
+        }}
+    }})();
+";
+
+            _ = chatBrowser.CoreWebView2.ExecuteScriptAsync(script);
         }
+
+
 
         private string GetKeyName(int keyCode)
         {
@@ -187,6 +233,7 @@ namespace LMLocal
 
             _disposed = true;
             this.Loaded -= OnControlLoaded;
+
             if (chatBrowser != null)
             {
                 try

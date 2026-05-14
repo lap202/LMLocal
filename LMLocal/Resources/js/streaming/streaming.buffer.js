@@ -3,6 +3,7 @@
 * "visible" assembled text in controlled increments. 
 **/
 export class StreamingBuffer {
+
     constructor(wordsPerRead = 2) {
         this._fullText = "";
         this._cursor = 0;
@@ -11,43 +12,80 @@ export class StreamingBuffer {
         this._defaultWordsPerRead = wordsPerRead;
     }
 
-    _countWordsInString(str) {
-        const words = str.match(/\S+/g);
-        return words ? words.length : 0;
+    _countWords(str) {
+        let count = 0;
+        let inWord = false;
+        for (let i = 0; i < str.length; i++) {
+            const ch = str[i];
+            const isSpace = ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t';
+
+            if (!isSpace) {
+                if (!inWord) {
+                    count++;
+                    inWord = true;
+                }
+            } else {
+                inWord = false;
+            }
+        }
+
+        return count;
     }
 
     append(fullText) {
-        if (!fullText) return;
-        if (fullText.length <= this._fullText.length) return;
+        if (!fullText || fullText.length <= this._fullText.length) return;
 
-        const oldLength = this._fullText.length;
-        const addedText = fullText.slice(oldLength);
+        const oldLen = this._fullText.length;
+        const newPart = fullText.slice(oldLen);
 
-        this._remainingWords += this._countWordsInString(addedText);
+        let addedWords = this._countWords(newPart);
 
+        if (oldLen > 0 && addedWords > 0) {
+            const lastCharOld = this._fullText[oldLen - 1];
+            const firstCharNew = newPart[0];
+            const isOldCharWord = !(lastCharOld === ' ' || lastCharOld === '\n' || lastCharOld === '\r' || lastCharOld === '\t');
+            const isNewCharWord = !(firstCharNew === ' ' || firstCharNew === '\n' || firstCharNew === '\r' || firstCharNew === '\t');
+
+            if (isOldCharWord && isNewCharWord) {
+                addedWords--;
+            }
+        }
+
+        this._remainingWords += addedWords;
         this._fullText = fullText;
     }
 
     readNext(wordsPerRead = this._defaultWordsPerRead) {
         if (this._cursor >= this._fullText.length) return this._visibleText;
 
-        const remaining = this._fullText.slice(this._cursor);
+        let wordsFound = 0;
+        let idx = this._cursor;
+        const len = this._fullText.length;
 
-        const tokens = remaining.match(/\s+|\S+/g) || [];
+        const isSpace = (i) => {
+            const ch = this._fullText[i];
+            return ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t';
+        };
 
-        let wordsTaken = 0;
-        const tokensToTake = [];
-        for (let i = 0; i < tokens.length && wordsTaken < wordsPerRead; i++) {
-            const t = tokens[i];
-            tokensToTake.push(t);
-            if (!/^\s+$/.test(t)) wordsTaken++;
+        while (idx < len && wordsFound < wordsPerRead) {
+            while (idx < len && isSpace(idx)) {
+                idx++;
+            }
+
+            if (idx >= len) break;
+
+            while (idx < len && !isSpace(idx)) {
+                idx++;
+            }
+
+            wordsFound++;
         }
-        const chunk = tokensToTake.join('');
+
+        const chunk = this._fullText.substring(this._cursor, idx);
 
         this._visibleText += chunk;
-        this._cursor += chunk.length;
-
-        this._remainingWords = Math.max(0, this._remainingWords - wordsTaken);
+        this._cursor = idx;
+        this._remainingWords = Math.max(0, this._remainingWords - wordsFound);
 
         return this._visibleText;
     }
@@ -75,4 +113,4 @@ export class StreamingBuffer {
     get visibleText() {
         return this._visibleText;
     }
-}
+} 

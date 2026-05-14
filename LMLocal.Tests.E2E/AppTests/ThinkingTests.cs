@@ -28,9 +28,10 @@ public class ThinkingTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text")).ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for chat to complete and return to idle/ready state
+        // The thought-container should be hidden if no StreamThought was sent
+        await Expect(Page.Locator(".thought-container")).ToBeHiddenAsync(new() { Timeout = 5000 });
 
-        await Expect(Page.Locator(".thought-container")).ToBeHiddenAsync();
         var thoughtCount = await Page.Locator(".thought-content").CountAsync();
         if (thoughtCount > 0)
         {

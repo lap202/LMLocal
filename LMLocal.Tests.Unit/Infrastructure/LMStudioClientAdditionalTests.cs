@@ -4,8 +4,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using LMLocal.Infrastructure.Lm;
+using LMLocal.Infrastructure.Api;
+using LMLocal.Infrastructure.Vs;
+using LMLocal.Infrastructure.Vs.Abstractions;
 using LMLocal.Models;
+using LMLocal.Services;
+using Moq;
 using NUnit.Framework;
 
 namespace LMLocal.Tests.Unit.Infrastructure
@@ -32,7 +36,11 @@ namespace LMLocal.Tests.Unit.Infrastructure
                 Content = new StringContent(json)
             };
             var client = new HttpClient(new FakeHandler(response));
-            var lm = new LMStudioClient(client, "http://localhost:1234");
+            var wrapper = new TestHttpClientWrapper(client);
+            var toolFactory = new Mock<IVsToolFactory>().Object;
+            var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.Current).Returns(new AppSettings());
+            var lm = new OpenApiAdapter(wrapper, mockSettings.Object, toolFactory);
             var messageContext = new MessageContext(new List<ChatMessage>());
             var modelContext = new ModelContext("test-model");
             var result = await lm.SendChatAsync(messageContext, modelContext, CancellationToken.None);
@@ -48,7 +56,11 @@ namespace LMLocal.Tests.Unit.Infrastructure
                 Content = new StringContent(json)
             };
             var client = new HttpClient(new FakeHandler(response));
-            var lm = new LMStudioClient(client, "http://localhost:1234");
+            var wrapper = new TestHttpClientWrapper(client);
+            var toolFactory = new Mock<IVsToolFactory>().Object;
+            var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.Current).Returns(new AppSettings());
+            var lm = new OpenApiAdapter(wrapper, mockSettings.Object, toolFactory);
             var messageContext = new MessageContext(new List<ChatMessage>());
             var modelContext = new ModelContext("test-model");
             Assert.ThrowsAsync<HttpRequestException>(async () => await lm.SendChatAsync(messageContext, modelContext, CancellationToken.None));

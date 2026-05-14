@@ -17,9 +17,11 @@ namespace LMLocal.Common
     /// <summary>
     /// Dummy logger that discards all messages. Useful for tests or when logging must be disabled.
     /// </summary>
+
     internal class DummyLogger : IInternalLogger
     {
         public void Debug(string message) { }
+
         public void Info(string message) { }
 
         public void Warn(string message) { }
@@ -36,11 +38,17 @@ namespace LMLocal.Common
         public void Info(string message) => Write("INFO", message);
         public void Warn(string message) => Write("WARN", message);
         public void Error(string message, Exception ex = null)
-            => Write("ERROR", message + (ex != null ? $" | {ex.Message}" : ""));
+        {
+            string errorMsg = message;
+            if (ex != null)
+                errorMsg += $" | {ex}";
+            Write("ERROR", errorMsg);
+        }
 
         private void Write(string level, string message)
         {
-            string line = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {message}";
+            string safeMessage = message ?? "";
+            string line = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {safeMessage}";
             System.Diagnostics.Debug.WriteLine(line);
         }
     }
@@ -50,7 +58,11 @@ namespace LMLocal.Common
     /// </summary>
     internal static class InternalLogger
     {
+#if DEBUG
+        private static IInternalLogger _instance = new DebugLogger();
+#else
         private static IInternalLogger _instance = new DummyLogger();
+#endif
         private static readonly object _lock = new object();
 
         public static void SetLogger(IInternalLogger logger)

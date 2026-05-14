@@ -12,12 +12,13 @@ namespace LMLocal.Common
         private static readonly JsonSerializerSettings IndentedSettings = new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
-            Converters = new JsonConverter[] { new StringEnumConverter() }
+            
         };
 
         private static readonly JsonSerializerSettings IndentedSettingsWithEnumValues = new JsonSerializerSettings
         {
-            Formatting = Formatting.Indented
+            Formatting = Formatting.Indented,
+            Converters = new JsonConverter[] { new StringEnumConverter() }
         };
 
         internal static string ToJson(this object obj)

@@ -1,4 +1,5 @@
-import { AppStatus, UIText } from '@app/store/app.globals.js';
+import { UIText } from '@app/store/app.globals.js';
+import { AppStatus } from '@app/store/app.status.js';
 import { appSelectors } from '@app/store/app.selectors.js';
 import { createCallback } from '@app/lib/callback.js';
 
@@ -12,8 +13,6 @@ import { createCallback } from '@app/lib/callback.js';
 class StatusComponent {
     constructor() {
         this.elements = {};
-        this.totalTokens = 0;
-        this.tokenMax = 0;
         this.retryTimeout = null;
         this.connectTimeout = null;
         this.onRetry = createCallback();
@@ -25,21 +24,19 @@ class StatusComponent {
             connStatus: document.getElementById('conn-status'),
             retryBtn: document.getElementById('retry-btn'),
             connectBtn: document.getElementById('connect-btn'),
-            modelName: document.getElementById('model-name'),
-            separator: document.getElementById('status-separator'),
-            tokenBarFill: document.getElementById('token-bar-fill'),
-            barInfoTooltip: document.getElementById('info-tooltip'),
+            statusText: document.getElementById('status-text'),
+            statusBar: document.getElementById('status-bar'),
             liveTokenCount: document.getElementById('live-token-count'),
             tokenCountText: document.getElementById('token-number'),
-            tokensSpeed: document.getElementById('tokens-speed'),
-            statusText: document.getElementById('status-text'),
-            statusBar: document.getElementById('status-bar')
+            tokensSpeed: document.getElementById('tokens-speed')
         };
     }
 
-    _updateConnectionStatus(status, error, prevStatus) {
-        if (prevStatus !== undefined && status === prevStatus) return;
+    _updateConnectionStatus(appState, prevAppState) {
+        if (prevAppState && appState.status === prevAppState.status) return;
 
+        const status = appState.status;
+        const error = appState.error;
         let connText = '', connClass = '';
 
         switch (status) {
@@ -60,6 +57,8 @@ class StatusComponent {
             case AppStatus.STREAMING:
             case AppStatus.THINKING:
             case AppStatus.FINISHING:
+            case AppStatus.EXECUTING:
+            case AppStatus.RESPONDING:
             case AppStatus.COMPACTING:
             case AppStatus.STOPPING:
             case AppStatus.ERROR:
@@ -75,6 +74,7 @@ class StatusComponent {
             this.elements.connStatus.textContent = connText;
             this.elements.connStatus.className = connClass;
         }
+
         if (this.elements.retryBtn && this.elements.connectBtn) {
             if (status === AppStatus.OFFLINE) {
                 if (error) {
@@ -93,60 +93,44 @@ class StatusComponent {
         }
     }
 
-    _updateModelVisibility(status) {
-        const showModel = !(status === AppStatus.CONNECTING || status === AppStatus.OFFLINE);
-        if (this.elements.modelName) {
-            this.elements.modelName.style.display = showModel ? 'inline' : 'none';
-        }
-        if (this.elements.separator) this.elements.separator.style.display = showModel ? 'inline' : 'none';
-    }
-
-    _updateModelNameText(modelName, prevModelName) {
-        if (prevModelName !== undefined && modelName === prevModelName) return;
-
-        if (this.elements.modelName && modelName) {
-            this.elements.modelName.textContent = modelName;
-        }
-    }
-
-    _updateTokenBar(prevTokenMax) {
-        if (this.elements.tokenBarFill && this.elements.barInfoTooltip) {
-            const percent = this.tokenMax > 0 ? Math.min((this.totalTokens / this.tokenMax) * 100, 100) : 0;
-            this.elements.tokenBarFill.style.transform = `scaleY(${percent / 100})`;
-            this.elements.barInfoTooltip.title = `Context usage: ${Math.round(percent)}%`;
-        }
-    }
-
-    _updateTokenCounter(tokenUsed, tokenSpeed, status, prevTokenUsed, prevTokenSpeed) {
-        if (prevTokenUsed !== undefined && tokenUsed === prevTokenUsed && tokenSpeed === prevTokenSpeed) return;
+    _updateTokenCounter(appState, prevAppState) {
+        if (prevAppState &&
+            appState.tokenUsed === prevAppState.tokenUsed &&
+            appState.tokenSpeed === prevAppState.tokenSpeed) return;
 
         if (this.elements.liveTokenCount) {
-            const isWorking = appSelectors.isBusy({ status });
+            const isWorking = appSelectors.isBusy(appState.status);
             this.elements.liveTokenCount.style.display = isWorking ? "inline" : "none";
         }
-        if (this.elements.tokenCountText && tokenUsed !== prevTokenUsed) {
-            this.elements.tokenCountText.textContent = tokenUsed > 0 ? `${tokenUsed} ${UIText.TEXT_TOKENS}` : "";
+
+        if (this.elements.tokenCountText && appState.tokenUsed !== prevAppState?.tokenUsed) {
+            this.elements.tokenCountText.textContent = appState.tokenUsed > 0
+                ? `${appState.tokenUsed} ${UIText.TEXT_TOKENS}`
+                : "";
         }
-        if (this.elements.tokensSpeed && tokenSpeed !== prevTokenSpeed) {
-            this.elements.tokensSpeed.textContent = tokenSpeed > 0 ? `(${tokenSpeed.toFixed(1)} ${UIText.TEXT_TOKENS_PER_SECOND})` : "";
+
+        if (this.elements.tokensSpeed && appState.tokenSpeed !== prevAppState?.tokenSpeed) {
+            this.elements.tokensSpeed.textContent = appState.tokenSpeed > 0
+                ? `(${appState.tokenSpeed.toFixed(1)} ${UIText.TEXT_TOKENS_PER_SECOND})`
+                : "";
         }
     }
 
-    _updateStatusText(state, prev) {
-        if (prev && state.status === prev.status && state.error === prev.error) return;
+    _updateStatusText(appState, prevAppState) {
+        if (prevAppState && appState.status === prevAppState.status && appState.error === prevAppState.error) return;
         if (!this.elements.statusText) return;
 
-        const status = state.status;
+        const status = appState.status;
         this.elements.statusText.classList.remove('error');
 
         switch (status) {
             case AppStatus.ERROR:
-                this.elements.statusText.textContent = state.error || UIText.STATUS_ERROR;
+                this.elements.statusText.textContent = appState.error || UIText.STATUS_ERROR;
                 this.elements.statusText.classList.add('error');
                 break;
             case AppStatus.OFFLINE:
-                if (state.error) {
-                    this.elements.statusText.textContent = state.error;
+                if (appState.error) {
+                    this.elements.statusText.textContent = appState.error;
                     this.elements.statusText.classList.add('error');
                 } else {
                     this.elements.statusText.textContent = '';
@@ -166,11 +150,13 @@ class StatusComponent {
         }
     }
 
-    _updateGeneratingAnimation(state, prev) {
-        const isTerminalState = appSelectors.isTerminal(state);
-        if (prev && isTerminalState === appSelectors.isTerminal(prev)) return;
+    _updateGeneratingAnimation(appState, prevAppState) {
+        const isTerminalState = appSelectors.isTerminal(appState.status);
+        if (prevAppState && isTerminalState === appSelectors.isTerminal(prevAppState.status)) return;
 
-        if (this.elements.statusBar) this.elements.statusBar.classList.toggle('generating', !isTerminalState);
+        if (this.elements.statusBar) {
+            this.elements.statusBar.classList.toggle('generating', !isTerminalState);
+        }
     }
 
     _onRetryClick = async (e) => {
@@ -231,36 +217,13 @@ class StatusComponent {
             this.connectTimeout = null;
         }
         this.elements = {};
-        this.totalTokens = 0;
-        this.tokenMax = 0;
     }
 
-    update(state, prev) {
-        if (state.status === AppStatus.CLEARING) {
-            this.totalTokens = 0;
-        } else {
-            const used = state.tokenUsed ?? 0;
-            const prevUsed = prev?.tokenUsed ?? 0;
-            if (used > prevUsed) {
-                this.totalTokens += used - prevUsed;
-            }
-        }
-
-        this._updateConnectionStatus(state.status, state.error, prev?.status);
-        this._updateModelVisibility(state.status);
-        this._updateTokenCounter(state.tokenUsed ?? 0, state.tokenSpeed ?? 0, state.status, prev?.tokenUsed, prev?.tokenSpeed);
-        this._updateTokenBar(prev?.tokenMax);
-        this._updateStatusText(state, prev);
-        this._updateGeneratingAnimation(state, prev);
-    }
-
-    updateModelName(modelName, prevModelName) {
-        this._updateModelNameText(modelName, prevModelName);
-    }
-
-    updateModelContext(tokenMax, prevTokenMax) {
-        this.tokenMax = tokenMax;
-        this._updateTokenBar(prevTokenMax);
+    update(appState, prevAppState) {
+        this._updateConnectionStatus(appState, prevAppState);
+        this._updateTokenCounter(appState, prevAppState);
+        this._updateStatusText(appState, prevAppState);
+        this._updateGeneratingAnimation(appState, prevAppState);
     }
 }
 

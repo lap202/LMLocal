@@ -29,8 +29,9 @@ public class StreamingTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         await Expect(Page.Locator(".ai-message")).ToContainTextAsync("console.log(\"hello\");", new() { Timeout = 3000 });
     }
@@ -61,8 +62,9 @@ public class StreamingTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         var visibleAfter = await Page.Locator(".loading-indicator:visible").CountAsync();
         Assert.That(visibleAfter, Is.EqualTo(0), "No loading indicators should be visible after stream completes");

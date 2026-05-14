@@ -1,4 +1,4 @@
-import { AppStatus } from '@app/store/app.globals.js';
+import { AppStatus } from '@app/store/app.status.js';
 import { BaseStoreClass } from "@app/store/base.store.js";
 
 /**
@@ -12,10 +12,13 @@ class AppStoreClass extends BaseStoreClass {
             status: AppStatus.OFFLINE,
             tokenUsed: 0,
             tokenSpeed: 0,
+            sessionId: null,
             error: null,
             accumulatedText: "",
             accumulatedThoughtText: "",
-            userMessage: ""
+            userMessage: "",
+            toolCallId:"",
+            toolMessage: "",
         });
     }
 }

@@ -1,25 +1,29 @@
 using System;
 using System.Linq;
-using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using LMLocal.Common;
-using LMLocal.Infrastructure.Lm;
-using LMLocal.Infrastructure.Vs;
+using LMLocal.Infrastructure.Api;
+using LMLocal.Infrastructure.Api.Responses;
+using LMLocal.Infrastructure.Vs.Implementations;
 using LMLocal.Models;
 using LMLocal.Services;
+using LMLocal.Services.ChatSession;
 using Microsoft.VisualStudio.Shell;
-using Newtonsoft.Json.Linq;
 
 namespace LMLocal.Infrastructure.WebView
 {
+    /// <summary>
+    /// Bridge class for communication between WebView2 and backend logic.
+    /// </summary>
     public interface IWebViewBridge
     {
         Task<bool> CopyToClipboardAsync(string text);
         Task ExecutePromptAsync(string requestJson);
         Task<string> GetSettingsAsync();
-        Task<string> GetStatusAsync();
+        Task<string> ListModelsAsync();
+        Task<bool> SetActiveModelAsync(string modelId, int contextLength);
         Task<bool> ResetHistoryAsync();
         Task StopExecutionAsync();
         Task<bool> UpdateSettingsAsync(string newSettingsJson);
@@ -27,98 +31,99 @@ namespace LMLocal.Infrastructure.WebView
         Task<bool> UpdateInstructionsAsync(string newInstructionsJson);
     }
 
-    /// <summary>
-    /// Bridge class for communication between WebView2 and backend logic.
-    /// </summary>
+
+
     [ComVisible(true)]
     public class WebViewBridge : IWebViewBridge
     {
-        // Single shared HttpClient — Timeout managed via CancellationToken per request
-        private static readonly HttpClient HttpClient = new HttpClient
-        {
-            Timeout = Timeout.InfiniteTimeSpan
-        };
-
-        private readonly ILMStudioClient _lmStudioClient;
-        private readonly WebViewScriptExecutor _scriptExecutor;
-        private readonly ChatGenerationService _chatService;
+        private readonly IModelsListService _modelsListService;
+        private readonly IWebViewScriptExecutor _scriptExecutor;
         private readonly InstructionsManager _instructionsManager;
         private readonly ISettingsManager _settingsManager;
+        private readonly IActiveDocumentTool _activeDocumentTool;
+        private readonly ISessionManager _sessionManager;
+        private readonly IActiveModelContext _activeModelContext;
+        private readonly IChatHistoryManager _chatHistoryManager;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WebViewBridge"/> class.
-        /// </summary>
-        public WebViewBridge(Microsoft.Web.WebView2.Wpf.WebView2 webView, ISettingsManager settingsManager)
+        internal WebViewBridge(
+            ISettingsManager settingsManager,
+            IModelsListService modelsListService,
+            IWebViewScriptExecutor scriptExecutor,
+            IActiveDocumentTool activeDocumentTool,
+            ISessionManager sessionManager,
+            IActiveModelContext activeModelContext,
+            IChatHistoryManager chatHistoryManager)
         {
-            _settingsManager = settingsManager;
-            _scriptExecutor = new WebViewScriptExecutor(webView);
-
-            var persistence = new ChatPersistenceService(settingsManager);
-            var historyManager = new ChatHistoryManager(Defaults.DefaultSystemPrompt, persistence, settingsManager);
-            var compactor = new HistoryCompactor(historyManager, async type =>
-            {
-                await _scriptExecutor.PostMessageAsJsonAsync(
-                    new WebView2ScriptMessage { Type = type, Payload = "" });
-            }, settingsManager);
-
-            _lmStudioClient = new LMStudioClient(HttpClient, settingsManager.Current.LmStudioBaseUrl, settingsManager);
-
-
-            _chatService = new ChatGenerationService(_lmStudioClient, historyManager, compactor, settingsManager);
+            _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+            _scriptExecutor = scriptExecutor ?? throw new ArgumentNullException(nameof(scriptExecutor));
+            _modelsListService = modelsListService ?? throw new ArgumentNullException(nameof(modelsListService));
+            _activeDocumentTool = activeDocumentTool ?? throw new ArgumentNullException(nameof(activeDocumentTool));
+            _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+            _activeModelContext = activeModelContext ?? throw new ArgumentNullException(nameof(activeModelContext));
+            _chatHistoryManager = chatHistoryManager ?? throw new ArgumentNullException(nameof(chatHistoryManager));
             _instructionsManager = new InstructionsManager();
-
-            InternalLogger.Info("LMLocalBridge initialized");
         }
 
         /// <summary>
-        /// Gets the status of the LM Studio backend.
+        /// Returns list of available models from different providers and activeModel if any.
         /// </summary>
-        public async Task<string> GetStatusAsync()
+        public async Task<string> ListModelsAsync()
         {
-            var result = new GetStatusResponse();
-            var inactivityTimeout = _settingsManager.Current.StreamInactivityTimeoutSeconds == 0 ? 15 : _settingsManager.Current.StreamInactivityTimeoutSeconds;
+            var requestTimeout = _settingsManager.RequestTimeoutSeconds;
             try
             {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(inactivityTimeout)))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(requestTimeout)))
                 {
-                    var response = await _lmStudioClient.ListModelsAsync(cts.Token).ConfigureAwait(false);
-                    if (!response.Models.Any())
+                    var response = await _modelsListService.ListModelsAsync(cts.Token).ConfigureAwait(false);
+                    if (response != null)
                     {
-                        result.Status = "ERROR";
-                        result.ErrorMessage = "No models found";
-                        return result.ToJson();
+                        ApplyCurrentActiveModel(response, _activeModelContext.CurrentModelId);
                     }
 
-                    var model = response.Models.FirstOrDefault(m => m.Type == "llm" && m.LoadedInstances.Any());
-                    if (model == null)
-                    {
-                        result.Status = "ERROR";
-                        result.ErrorMessage = "No LLM model is currently loaded";
-                        return result.ToJson();
-                    }
-
-                    var instance = model.LoadedInstances[0];
-
-                    result.Status = "SUCCESS";
-
-                    result.ModelName = model.DisplayName ?? model.Key;
-                    result.ModelId = instance.Id;
-
-                    result.MaxContext = instance.Config.ContextLength;
-
-                    result.ModelDetails = JObject.FromObject(model);
-
-                    _chatService.SetMaxContext(instance.Config.ContextLength);
+                    return response == null ? "{}" : response.ToJson();
                 }
             }
             catch (Exception ex)
             {
-                InternalLogger.Error("GetStatusAsync failed", ex);
-                result.Status = "ERROR";
-                result.ErrorMessage = "LM Studio unreachable: " + ex.Message;
+                InternalLogger.Error("ListModelsAsync failed", ex);
+                return new { Error = "Failed to list models: " + ex.Message }.ToJson();
             }
+        }
 
-            return result.ToJson();
+        private void ApplyCurrentActiveModel(UnifiedListModelsResponse response, string currentModelId)
+        {
+            if (response?.Models == null || response.Models.Count == 0)
+                return;
+
+            if (string.IsNullOrEmpty((string)currentModelId))
+                return;
+
+            var currentModel = response.Models.FirstOrDefault(m => m.Id == currentModelId);
+            if (currentModel != null)
+            {
+                response.ActiveModel = currentModel;
+                response.HasActiveModel = true;
+            }
+        }
+
+        /// <summary>
+        /// Sets the active model and its max context length. If contextLength is not provided or <= 0, defaults to 16384.
+        /// </summary>
+        public Task<bool> SetActiveModelAsync(string modelId, int contextLength)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(modelId)) return Task.FromResult(false);
+
+                var maxContext = contextLength <= 0 ? 16384 : contextLength;
+                _activeModelContext.SetActiveModel(modelId, maxContext);
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Error("SetActiveModelAsync failed", ex);
+                return Task.FromResult(false);
+            }
         }
 
         /// <summary>
@@ -133,7 +138,6 @@ namespace LMLocal.Infrastructure.WebView
             }
 
             ExecutePromptRequest request = requestJson.FromJson<ExecutePromptRequest>();
-
             if (request == null)
             {
                 InternalLogger.Error("ExecutePromptAsync: deserialized request is null");
@@ -145,42 +149,23 @@ namespace LMLocal.Infrastructure.WebView
                 var context = new GenerateStreamContext
                 {
                     Prompt = request.Prompt,
-                    ActiveDocumentContent = request.IncludeContent ? await new ActiveDocumentProvider().GetContentAsync() : null,
+                    ActiveDocumentContent = request.IncludeContent ? await _activeDocumentTool.GetContentAsync() : null,
                     AdditionalPrompt = request.AdditionalPrompt,
                     ModelId = request.ModelId
                 };
 
-                await _chatService.GenerateStreamAsync(
-                    context,
-                    onChunk: async (streamChunk, stats) =>
-                    {
-                        var msgType = streamChunk.Kind == ChunkKind.Reasoning
-                            ? WebView2MessageType.StreamThought
-                            : WebView2MessageType.StreamContent;
+                async Task OnMessageAsync(WebView2ScriptMessage message)
+                {
+                    await _scriptExecutor.PostMessageAsJsonAsync(message).ConfigureAwait(false);
+                }
 
-                        await _scriptExecutor.PostMessageAsJsonAsync(
-                            new WebView2ScriptMessageWithCount()
-                            {
-                                Type = msgType,
-                                Payload = streamChunk.Text,
-                                Count = stats.TotalTokens,
-                                TokensPerSecond = stats.TokensPerSecond
-                            }
-                        ).ConfigureAwait(false);
-                    },
-                    onError: async (error) =>
-                    {
-                        await _scriptExecutor.PostMessageAsJsonAsync(
-                            new WebView2ScriptMessage() { Type = WebView2MessageType.StreamError, Payload = error }
-                        );
-                    },
-                    onEnd: async () =>
-                    {
-                        await _scriptExecutor.PostMessageAsJsonAsync(
-                            new WebView2ScriptMessage() { Type = WebView2MessageType.StreamEnd, Payload = "" }
-                        );
-                    }
-                ).ConfigureAwait(false);
+                if (!await _sessionManager.TryStartSessionAsync(
+                    context,
+                    OnMessageAsync,
+                    cancellationToken: CancellationToken.None).ConfigureAwait(false))
+                {
+                    InternalLogger.Info("ExecutePromptAsync: Session already running");
+                }
             }
             catch (Exception ex)
             {
@@ -190,21 +175,36 @@ namespace LMLocal.Infrastructure.WebView
 
 
         /// <summary>
-        /// Resets the chat history (async wrapper). Returns true if successful, false if generation is in progress.
+        /// Resets the chat history. Returns false if a session is running, true if successful.
         /// </summary>
-        public async Task<bool> ResetHistoryAsync()
+        public Task<bool> ResetHistoryAsync()
         {
-            InternalLogger.Info("ResetHistoryAsync called");
-            return await _chatService.ResetHistoryAsync().ConfigureAwait(false);
+            try
+            {
+                if (_sessionManager.IsSessionRunning)
+                {
+                    InternalLogger.Info("ResetHistoryAsync: Cannot reset while session is running");
+                    return Task.FromResult(false);
+                }
+
+                _chatHistoryManager.Clear();
+                InternalLogger.Info("ResetHistoryAsync: History cleared successfully");
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Error("ResetHistoryAsync failed", ex);
+                return Task.FromResult(false);
+            }
         }
 
         /// <summary>
-        /// Stops the current text generation process (async wrapper).
+        /// Stops the current text generation process and active tools.
         /// </summary>
         public Task StopExecutionAsync()
         {
             InternalLogger.Info("StopExecutionAsync called");
-            _chatService.StopExecution();
+            _sessionManager.TryStopSession();
             return Task.CompletedTask;
         }
 
@@ -283,7 +283,6 @@ namespace LMLocal.Infrastructure.WebView
                 {
                     return false;
                 }
-
 
                 await _instructionsManager.UpdateAsync(newInstructionsJson).ConfigureAwait(false);
                 return true;

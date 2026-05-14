@@ -3,7 +3,7 @@ using LMLocal.Services;
 using LMLocal.Infrastructure.Time;
 using NUnit.Framework;
 
-namespace LMLocal.Tests.Unit.Internal
+namespace LMLocal.Tests.Unit
 {
     internal class FakeTimeProvider : ITimeProvider
     {

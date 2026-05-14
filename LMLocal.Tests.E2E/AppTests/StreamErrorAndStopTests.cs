@@ -74,7 +74,9 @@ public class StreamErrorAndStopTests : AppTestBase
 
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#mainBtn"))
-            .ToHaveTextAsync("Send", new() { Timeout = 5000 });
+        // After stopping, the app sends ChatSessionComplete (or ChatSessionCancelled)
+        // Wait for the session to complete/cancel, which triggers state reset to IDLE
+        // This is indicated by button returning to "Send"
+        await Page.WaitForFunctionAsync("() => document.querySelector('#mainBtn')?.textContent.trim() === 'Send'");
     }
 }

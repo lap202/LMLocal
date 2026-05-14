@@ -3,15 +3,13 @@
  * Factory that creates an message DOM element, caches its internal blocks,
  * and returns an API to manipulate the message.
  */
-export function createAiMessage(container, highlightWorkerClient, streamingPipeline) {
-    let element = document.createElement('div');
-    element.className = 'message ai-message';
+export function createAiMessage(container, highlightWorkerClient, streamingPipeline, iterating = false) {
 
-    element.innerHTML = `
+    const html = `<div>
         <div class="loading-indicator" data-element="loading-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
         <div class="thought-container" style="display: none;" data-element="thought-container">
             <div class="reasoning-header">
-                <div class="reasoning-title">Thoughts  
+                <div class="reasoning-title">Thoughts
                     <div class="loading-indicator" data-element="thought-loader">
                         <div class="dot"></div><div class="dot"></div><div class="dot"></div>
                     </div>
@@ -20,15 +18,29 @@ export function createAiMessage(container, highlightWorkerClient, streamingPipel
             </div>
             <div class="thought-content" data-element="thought-content"></div>
         </div>
+        <div data-element="ai-tool-container"></div>
         <div class="ai-response-container" style="display: none;" data-element="response-container"></div>
+        </div>
     `;
-    container.appendChild(element);
+
+    let element;
+    if (iterating) {
+        element = container.lastElementChild;
+        element.insertAdjacentHTML('beforeend', html);
+        element = element.lastElementChild;
+    } else {
+        element = document.createElement('div');
+        element.className = 'message ai-message';
+        element.innerHTML = html;
+        container.appendChild(element);
+    }
 
     let elements = {
         loadingIndicator: element.querySelector('[data-element="loading-indicator"]'),
         thoughtContainer: element.querySelector('[data-element="thought-container"]'),
         thoughtContent: element.querySelector('[data-element="thought-content"]'),
         responseContainer: element.querySelector('[data-element="response-container"]'),
+        toolContainer: element.querySelector('[data-element="ai-tool-container"]'),
         thoughtLoader: element.querySelector('[data-element="thought-loader"]')
     };
 
@@ -71,6 +83,7 @@ export function createAiMessage(container, highlightWorkerClient, streamingPipel
             streamingPipeline.write(text);
 
         },
+
         finishStreaming: () => {
             const responseContainer = elements?.responseContainer;
             return new Promise((resolve) => {
@@ -95,6 +108,24 @@ export function createAiMessage(container, highlightWorkerClient, streamingPipel
                     resolve();
                 }
             });
+        },
+
+        startTooling: (callId, message) => {
+            api.stopLoadingIndicator();
+
+            const toolDiv = document.createElement('div');
+            toolDiv.className = 'tool-status';
+            toolDiv.textContent = message || 'Tooling started.';
+            toolDiv.setAttribute('data-tool-call-id', callId);
+            elements.toolContainer.appendChild(toolDiv);
+        },
+
+        finishTooling: (callId, message) => {
+            const toolDiv = elements.toolContainer.querySelector(`[data-tool-call-id="${callId}"]`);
+            if (toolDiv) {
+                toolDiv.className = 'tool-status-completed';
+                toolDiv.textContent += (message || 'Tooling stopped.');
+            }
         },
 
         stopStreaming: (message) => {

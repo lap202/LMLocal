@@ -67,9 +67,8 @@ namespace LMLocal.Services
                 long activityMs = activityTimeMs();
 
                 if (activityMs > lastActivityMs)
-                {
                     lastActivityMs = activityMs;
-                }
+
 
                 if (nowMs - lastActivityMs > timeoutMs)
                 {

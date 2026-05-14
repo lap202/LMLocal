@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 
 namespace LMLocal.Infrastructure.Time
 {
@@ -9,6 +10,7 @@ namespace LMLocal.Infrastructure.Time
 
     internal class SystemTimeProvider : ITimeProvider
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long UtcNowTicks()
         {
             return DateTime.UtcNow.Ticks;

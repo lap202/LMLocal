@@ -1,10 +1,13 @@
-﻿import { AppStatus, UIText, Config } from '@app/store/app.globals.js';
+﻿import { UIText, Config } from '@app/store/app.globals.js';
+import { AppStatus } from '@app/store/app.status.js';
 import { createCallback } from '@app/lib/callback.js';
 import { createScrollManager } from '@app/lib/scroll.manager.js';
-import { createAiMessage } from '@app/chat/ai.message.js';
-import { createHighlightWorkerClient } from '@app/workers/highlight.worker.client.js';
-import { createMarkDownParser, ParserType } from '@app/workers/markdown.parser.js';
 import { createUserMessage } from '@app/chat/user.message.js';
+import { createAiMessage } from '@app/chat/ai.message.js';
+
+import { createHighlightParser } from '@app/workers/highlight.parser.js';
+import { createMarkDownParser, ParserType } from '@app/workers/markdown.parser.js';
+
 import { StreamingBuffer } from '@app/streaming/streaming.buffer.js';
 import { createStreamingPipeline } from '@app/streaming/streaming.pipeline.js';
 import { createStreamingRenderer, StreamingMode } from '@app/streaming/streaming.renderer.js';
@@ -21,7 +24,6 @@ class ChatController {
         this.highlightParser = null;
         this.activeTimeouts = [];
         this.onCopyCode = createCallback();
-        this.onHighlightCode = createCallback();
     }
 
     _getContainer() {
@@ -119,9 +121,22 @@ class ChatController {
                         this.highlightParser,
                         this._createPipeline(this.markdownParser)
                     );
+                } else {
 
-                    this.scrollManager.scrollToBottom(true);
+                    //iterating
+                    if (this.currentAi) {
+                        this.currentAi.finalize();
+                    }
+
+                    this.currentAi = createAiMessage(
+                        this.container,
+                        this.highlightParser,
+                        this._createPipeline(this.markdownParser),
+                        true
+                    );
                 }
+
+                this.scrollManager.scrollToBottom(true);
                 break;
 
             case AppStatus.THINKING:
@@ -134,34 +149,27 @@ class ChatController {
                 break;
 
             case AppStatus.FINISHING: {
+                
                 if (this.currentAi) {
+                    this.currentAi.stopThoughts();
                     this.currentAi.finishStreaming().then(async () => {
-                        await this.onHighlightCode.emit(true);
-                    }).finally(() => {
                         this.scrollManager.scrollToBottom();
                     });
                 }
                 break;
             }
 
-            case AppStatus.IDLE:
-                if (prev.status === AppStatus.FINISHING) {
-                    this.currentAi?.finalize();
-                    this.currentAi = null;
-                }
+            case AppStatus.EXECUTING:
+                this.currentAi.startTooling(state.toolCallId, state.toolMessage);
                 break;
 
-            case AppStatus.STOPPING:
-                if (this.currentAi) {
-                    this.currentAi.stopStreaming(UIText.TEXT_GENERATION_STOPPED);
-                    this.currentAi.finalize();
-                    this.currentAi = null;
-                }
+            case AppStatus.RESPONDING:
+                this.currentAi.finishTooling(state.toolCallId, state.toolMessage);
                 break;
 
             case AppStatus.ERROR:
-                if (this.currentAi && !state.accumulatedText) {
-                    const errorMsg = `An error occurred: ${state.error || 'Unknown error'}`;
+                if (this.currentAi) {
+                    const errorMsg = `${state.error || 'Unknown error'}`;
                     this.currentAi.stopStreaming(errorMsg);
                     this.currentAi.finalize();
                     this.currentAi = null;
@@ -169,7 +177,7 @@ class ChatController {
                 break;
 
             case AppStatus.OFFLINE:
-                if (this.currentAi && !state.accumulatedText) {
+                if (this.currentAi) {
                     this.currentAi.stopStreaming("You are offline");
                     this.currentAi.finalize();
                     this.currentAi = null;
@@ -185,9 +193,6 @@ class ChatController {
                 this.container?.replaceChildren();
                 this.setup(); // Re-setup to reinitialize everything after clearing.
 
-                break;
-            default:
-                //do nothing.
                 break;
         }
     }
@@ -245,7 +250,7 @@ class ChatController {
         this.markdownParser = createMarkDownParser(ParserType.MARKED_WORKER);
         this.markdownParser.start();
 
-        this.highlightParser = createHighlightWorkerClient();
+        this.highlightParser = createHighlightParser();
         this.highlightParser.start();
 
 

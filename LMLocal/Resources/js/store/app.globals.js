@@ -1,55 +1,38 @@
 "use strict";
 
 /**
- * Shared application constants, UI text.
+ * Shared  UI text.
  */
 
-export const AppStatus = {
-    // Connection states
-    CONNECTING: 'CONNECTING',   // initial connection / reconnection in progress
-    OFFLINE: 'OFFLINE',         // terminal, disconnected, show reload button
-
-    // Operational states (only possible when ONLINE)
-    IDLE: 'IDLE',               // terminal, ready to send, online
-    PROCESSING: 'PROCESSING',   // pre-streaming (model thinking)
-    THINKING: 'THINKING',       // actively receiving thinking tokens
-    STREAMING: 'STREAMING',     // actively receiving tokens
-    COMPACTING: 'COMPACTING',   // background KV-cache optimization
-    FINISHING: 'FINISHING',     // post-processing (highlighting, copy buttons)
-
-    // Interruption / error states
-    STOPPING: 'STOPPING',       // user requested stop, cleaning up
-    ERROR: 'ERROR',             // terminal,online but an error occurred, can send message to try to recover
-    CLEARING: 'CLEARING'        // clearing conversation, resetting state
-};
-
-export const UIText = {
-    STATUS_CONNECTING: 'Connecting...',
-    STATUS_OFFLINE: 'Disconnected',
-    STATUS_ONLINE: 'Connected',
-    STATUS_IDLE: 'Ready',
-    STATUS_PROCESSING: 'Thinking...',
-    STATUS_THINKING: 'Reasoning...',
-    STATUS_STREAMING: 'Generating...',
-    STATUS_FINISHING: 'Finishing...',
-    STATUS_STOPPING: 'Stopping...',
-    STATUS_COMPACTING: 'Optimizing memory...',
-    STATUS_CLEARING: 'Clearing conversation...',
-    STATUS_ERROR: 'Error',
-    STATUS_UNKNOWN: 'Wait...',
+export const UIText = Object.freeze({
     BUTTON_SEND: 'Send',
     BUTTON_STOP: 'Stop',
     BUTTON_WAIT: '...',
+    CONFIRM_CLEAR_CONVERSATION: 'Are you sure you want to clear the conversation?',
+    COPY_ERROR: 'Error!',
     COPY_LABEL: 'Copy',
     COPY_SUCCESS: 'Done!',
-    COPY_ERROR: 'Error!',
-    SHOW_MORE: 'more',
     SHOW_LESS: 'less',
-    CONFIRM_CLEAR_CONVERSATION: 'Are you sure you want to clear the conversation?',
+    SHOW_MORE: 'more',
+    STATUS_CLEARING: 'Clearing conversation...',
+    STATUS_COMPACTING: 'Optimizing memory...',
+    STATUS_CONNECTING: 'Connecting...',
+    STATUS_ERROR: 'Error',
+    STATUS_EXECUTING: 'Running tool...',
+    STATUS_FINISHING: 'Finishing...',
+    STATUS_IDLE: 'Ready',
+    STATUS_OFFLINE: 'Disconnected',
+    STATUS_ONLINE: 'Connected',
+    STATUS_PROCESSING: 'Thinking...',
+    STATUS_RESPONDING: 'Tool result ready',
+    STATUS_STOPPING: 'Stopping...',
+    STATUS_STREAMING: 'Generating...',
+    STATUS_THINKING: 'Reasoning...',
+    STATUS_UNKNOWN: 'Wait...',
+    TEXT_GENERATION_STOPPED: 'Generation stopped.',
     TEXT_TOKENS: 'tokens',
     TEXT_TOKENS_PER_SECOND: 't/s',
-    TEXT_GENERATION_STOPPED: 'Generation stopped.',
-};
+});
 
 export const Assets = {
     COPY_BUTTON_SVG: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`

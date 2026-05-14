@@ -87,7 +87,49 @@ namespace LMLocal.Infrastructure.Lm.Requests
         /// </summary>
         [JsonProperty("stream_options", NullValueHandling = NullValueHandling.Ignore)]
         public StreamOptions StreamOptions { get; set; }
+
+        /// <summary>List of tools that the model can call.</summary>
+        [JsonProperty("tools", NullValueHandling = NullValueHandling.Ignore)]
+        public List<ToolDefinition> Tools { get; set; }
+
+        /// <summary>Controll if tool can call function, 
+        /// none means the model will not call any tool and instead generates a message. 
+        /// auto means the model can pick between generating a message or calling one or more tools. 
+        /// required means the model must call one or more tools. </summary>
+        [JsonProperty("tool_choice", NullValueHandling = NullValueHandling.Ignore)]
+        public object ToolChoice { get; set; }
+
+        /// <summary>Allow parallel tool calls.</summary>
+        [JsonProperty("parallel_tool_calls", NullValueHandling = NullValueHandling.Ignore)]
+        public bool? ParallelToolCalls { get; set; }
     }
+
+
+    public class FunctionParameters
+    {
+        [JsonProperty("type")] public string Type { get; set; } = "object";
+        [JsonProperty("properties")] public Dictionary<string, object> Properties { get; set; }
+        [JsonProperty("required", NullValueHandling = NullValueHandling.Ignore)]
+        public List<string> Required { get; set; }
+    }
+
+
+    public class FunctionDefinition
+    {
+        [JsonProperty("name")] 
+        public string Name { get; set; }
+        [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
+        public string Description { get; set; }
+        [JsonProperty("parameters", NullValueHandling = NullValueHandling.Ignore)]
+        public FunctionParameters Parameters { get; set; }
+    }
+
+    public class ToolDefinition
+    {
+        [JsonProperty("type")] public string Type { get; set; } = "function";
+        [JsonProperty("function")] public FunctionDefinition Function { get; set; }
+    }
+
 
     /// <summary>
     /// Options for streaming response. Set only when stream is true.

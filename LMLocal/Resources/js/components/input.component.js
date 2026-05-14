@@ -1,4 +1,5 @@
-﻿import { AppStatus, UIText } from '@app/store/app.globals.js';
+﻿import { UIText } from '@app/store/app.globals.js';
+import { AppStatus } from '@app/store/app.status.js';
 import { appSelectors } from '@app/store/app.selectors.js';
 import { createCallback } from '@app/lib/callback.js';
 
@@ -69,8 +70,7 @@ class InputComponent {
 
     _handleDropdownToggle = (e) => {
         if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-        //disabled due beta feedback
-        //this.elements.dropdown.classList.toggle('active');
+        this.elements.dropdown.classList.toggle('active');
     };
 
     _handleDropdownItemClick = (e) => {
@@ -125,24 +125,26 @@ class InputComponent {
         if (
             prev &&
             state.status === prev.status &&
-            appSelectors.isBusy(state) === appSelectors.isBusy(prev) &&
-            appSelectors.isGenerating(state) === appSelectors.isGenerating(prev)
+            appSelectors.isBusy(state.status) === appSelectors.isBusy(prev.status)
         ) {
             return;
         }
 
-        const isBusy = appSelectors.isBusy(state);
-        const isGenerating = appSelectors.isGenerating(state);
-        const isStopping = state.status === AppStatus.STOPPING;
+        const isBusy = appSelectors.isBusy(state.status);
+        const isStopping = state.status === AppStatus.STOPPING || state.status === AppStatus.OFFLINE;
 
         this.elements.userInput.disabled = isBusy;
-        this.elements.mainBtn.disabled = isStopping || state.status === AppStatus.FINISHING;
-        this.elements.mainBtn.textContent = isGenerating
+        this.elements.mainBtn.disabled = isStopping;
+
+        const buttonText = isBusy
             ? UIText.BUTTON_STOP
             : isStopping
                 ? UIText.BUTTON_WAIT
-                : UIText.BUTTON_SEND;
-        this.elements.mainBtn.className = `main-btn ${isGenerating || isStopping ? 'btn-stop' : ''}`;
+                : UIText.BUTTON_SEND
+
+
+        this.elements.mainBtn.textContent = buttonText;
+        this.elements.mainBtn.className = `main-btn ${isBusy || isStopping ? 'btn-stop' : ''}`;
     }
 
     clearInput() {
@@ -184,9 +186,6 @@ class InputComponent {
     }
 
     updateInstructionsState(state, prev) {
-        //disabled due beta feedback
-        this.elements.dropdownTrigger.style.display = "none";
-        return true;
         if (!this.elements.dropdownMenu || !this.elements.selectedOption) return;
 
         if (state.instructions === prev?.instructions) return;

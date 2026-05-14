@@ -10,6 +10,10 @@ using Newtonsoft.Json;
 
 namespace LMLocal.Services
 {
+
+    /// <summary>
+    /// Saves chat messages to a local file in JSON Lines format for later retrieval. 
+    /// </summary>
     internal interface IChatPersistenceService
     {
         Task SaveLastMessageAsync(ChatMessage message, CancellationToken cancellationToken = default);
@@ -22,14 +26,15 @@ namespace LMLocal.Services
         private readonly ISettingsManager _settingsManager;
         private readonly System.Threading.SemaphoreSlim _writeSemaphore = new System.Threading.SemaphoreSlim(1, 1);
 
-        public ChatPersistenceService(ISettingsManager settingsManager, IFileSystem fileSystem = null)
+        public ChatPersistenceService(ISettingsManager settingsManager, IFileSystem fileSystem)
         {
-            _settingsManager = settingsManager;
-            _fileSystem = fileSystem ?? new DefaultFileSystem();
+            _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+
             _chatHistoryDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                Defaults.LocalAppDataFolder,
-                Defaults.ChatHistoryFolder
+                _settingsManager.LocalAppDataFolder,
+                _settingsManager.ChatHistoryFolder
             );
             _fileSystem.CreateDirectory(_chatHistoryDir);
         }
@@ -37,19 +42,21 @@ namespace LMLocal.Services
         public async Task SaveLastMessageAsync(ChatMessage message, CancellationToken cancellationToken = default)
         {
             if (_settingsManager?.Current?.EnableChatLogging != true || message == null) return;
-            
+
             await _writeSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
-                string fileName = $"{Defaults.ChatHistoryFilePrefix}{DateTime.UtcNow:yyyyMMdd_HH}.jsonl";
+                string fileName = $"{_settingsManager.ChatHistoryFilePrefix}{DateTime.UtcNow:yyyyMMdd_HH}.jsonl";
                 string filePath = Path.Combine(_chatHistoryDir, fileName);
 
                 var entry = new
                 {
                     timestamp = DateTime.UtcNow,
                     role = message.Role,
-                    content = message.Content
+                    content = message.Content,
+                    tool_call_id = message.ToolCallId,
+                    tool_calls = message.ToolCalls
                 };
 
                 string jsonLine = JsonConvert.SerializeObject(entry) + Environment.NewLine;
@@ -63,30 +70,28 @@ namespace LMLocal.Services
                 {
                     await _fileSystem.WriteAllBytesAsync(filePath, data, cancellationToken).ConfigureAwait(false);
                 }
-
-                InternalLogger.Debug($"Chat message appended to {fileName}");
             }
             catch (Exception ex)
             {
                 InternalLogger.Error("Failed to save chat message history, trying again", ex);
-
                 try
                 {
-                    string fileName = $"{Defaults.ChatHistoryFilePrefix}{DateTime.UtcNow:yyyyMMdd_HH}_{Guid.NewGuid():N}.jsonl";
+                    string fileName = $"{_settingsManager.ChatHistoryFilePrefix}{DateTime.UtcNow:yyyyMMdd_HH}_{Guid.NewGuid():N}.jsonl";
                     string filePath = Path.Combine(_chatHistoryDir, fileName);
 
                     var entry = new
                     {
                         timestamp = DateTime.UtcNow,
                         role = message.Role,
-                        content = message.Content
+                        content = message.Content,
+                        tool_call_id = message.ToolCallId,
+                        tool_calls = message.ToolCalls
                     };
 
                     string jsonLine = JsonConvert.SerializeObject(entry) + Environment.NewLine;
                     byte[] data = Encoding.UTF8.GetBytes(jsonLine);
 
                     await _fileSystem.WriteAllBytesAsync(filePath, data, cancellationToken).ConfigureAwait(false);
-                    InternalLogger.Debug($"Chat message saved to new file {fileName}");
                 }
                 catch (Exception ex2)
                 {

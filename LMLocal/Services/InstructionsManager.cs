@@ -23,16 +23,10 @@ namespace LMLocal.Services
     {
         private readonly string _filePath;
         private readonly IFileSystem _fileSystem;
+        private readonly ISettingsManager _settingsManager;
 
         public InstructionsManager()
-            : this(
-                  Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    Defaults.LocalAppDataFolder,
-                    Defaults.LocalAppInstructionsFileName
-                  ),
-                  null
-              )
+            : this(null, null)
         {
         }
 
@@ -41,9 +35,20 @@ namespace LMLocal.Services
         {
         }
 
-        public InstructionsManager(string filePath, IFileSystem fileSystem)
+        public InstructionsManager(string filePath, IFileSystem fileSystem, ISettingsManager settingsManager = null)
         {
             _fileSystem = fileSystem ?? new DefaultFileSystem();
+            _settingsManager = settingsManager;
+
+            if (string.IsNullOrEmpty(filePath))
+            {
+                filePath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    (_settingsManager?.LocalAppDataFolder ?? "LMLocalChat"),
+                    (_settingsManager?.LocalAppInstructionsFileName ?? "instructions.json")
+                );
+            }
+
             _fileSystem.ValidateFilePath(filePath);
             _fileSystem.EnsureDirectoryExistsForFile(filePath);
             _filePath = filePath;

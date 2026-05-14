@@ -76,8 +76,9 @@ public class GfmMarkdownTests : PageTest
         await Page.Locator("#userInput").FillAsync("Render GFM");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        // Wait for generation to complete
-        await Expect(Page.Locator("#status-text")).ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for generation to complete - response container stops generating
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         // Headings
         await Expect(Page.Locator(".ai-message h1")).ToHaveTextAsync("Heading 1", new() { Timeout = 2000 });
@@ -129,8 +130,9 @@ public class GfmMarkdownTests : PageTest
         await Page.Locator("#userInput").FillAsync("Render complex GFM");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        // Wait for generation to complete
-        await Expect(Page.Locator("#status-text")).ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for generation to complete - response container stops generating
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         // Setext heading should render as h1
         await Expect(Page.Locator(".ai-message h1")).ToHaveTextAsync("Setext Heading", new() { Timeout = 2000 });

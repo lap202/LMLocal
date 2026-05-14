@@ -68,41 +68,105 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Infrastructure\WebView\GetStatusResponse.cs" />
-    <Compile Include="Infrastructure\Lm\Responses\ListModelsResponse.cs" />
-    <Compile Include="Infrastructure\Lm\ModelContext.cs" />
-    <Compile Include="Infrastructure\Lm\MessageContext.cs" />
-    <Compile Include="Infrastructure\Lm\Responses\SendChatResponse.cs" />
-    <Compile Include="Infrastructure\Lm\Requests\SendChatRequest.cs" />
-    <Compile Include="Infrastructure\Lm\Responses\StreamingResponse.cs" />
+    <Compile Include="Infrastructure\DependencyInjection\ServiceConfiguration.cs" />
+    <Compile Include="Infrastructure\Api\HttpClientWrapper.cs" />
+    <Compile Include="Infrastructure\Api\Provider\ModelProvider.cs" />
+    <Compile Include="Infrastructure\Api\Converter\ModelResponseConverter.cs" />
+    <Compile Include="Infrastructure\Api\Provider\ProviderResolver.cs" />
+    <Compile Include="Infrastructure\Api\Responses\ListModelsResponse.cs" />
+    <Compile Include="Infrastructure\Api\Responses\LmStudioModelsResponse.cs" />
+    <Compile Include="Infrastructure\Api\Responses\OllamaPsResponse.cs" />
+    <Compile Include="Infrastructure\Api\Responses\UnifiedListModelsResponse.cs" />
+    <Compile Include="Infrastructure\Api\Converter\ToolDefinitionConverter.cs" />
+    <Compile Include="Infrastructure\Vs\Abstractions\IVsTool.cs" />
+    <Compile Include="Infrastructure\Vs\Common\SolutionFileProvider.cs" />
+    <Compile Include="Infrastructure\Vs\Common\PathResolver.cs" />
+    <Compile Include="Infrastructure\Vs\Common\SolutionInspector.cs" />
+    <Compile Include="Infrastructure\Vs\Common\VsSolutionFilesScanner.cs" />
+    <Compile Include="Infrastructure\Vs\Common\VsDependencies.cs" />
+    <Compile Include="Infrastructure\Vs\Common\VsUiThreadGuard.cs" />
+    <Compile Include="Infrastructure\Vs\Implementations\ActiveDocumentTool.cs" />
+    <Compile Include="Infrastructure\Vs\Implementations\FileLinesReaderTool.cs" />
+    <Compile Include="Infrastructure\Vs\Implementations\FindFilesByNameTool.cs" />
+    <Compile Include="Infrastructure\Vs\Implementations\GetSolutionOverviewTool.cs" />
+    <Compile Include="Infrastructure\Vs\Implementations\SolutionSearchTool.cs" />
+    <Compile Include="Infrastructure\Vs\ToolDefinition.cs" />
+    <Compile Include="Infrastructure\Vs\VsToolFactory.cs" />
+    <Compile Include="Infrastructure\Api\ModelContext.cs" />
+    <Compile Include="Infrastructure\Api\MessageContext.cs" />
+    <Compile Include="Infrastructure\Api\Responses\SendChatResponse.cs" />
+    <Compile Include="Infrastructure\Api\Requests\SendChatRequest.cs" />
+    <Compile Include="Infrastructure\Api\Responses\StreamingResponse.cs" />
+    <Content Include="Resources\css\dialog.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\css\toolbar.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\components\toolbar.component.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\dialogs\models.list.dialog.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\services\app.data.service.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="Resources\js\store\app.selectors.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Compile Include="Infrastructure\WebView\Models\WebView2MessageType.cs" />
+    <Compile Include="Infrastructure\WebView\Models\WebView2ScriptMessage.cs" />
+    <Compile Include="Infrastructure\WebView\Models\WebView2ScriptMessageWithCount.cs" />
+    <Compile Include="Infrastructure\WebView\Models\WebView2SessionCompleteMessage.cs" />
+    <Compile Include="Infrastructure\WebView\Models\WebView2ToolCallMessage.cs" />
+    <Compile Include="Infrastructure\WebView\WebViewBridgeFactory.cs" />
+    <Compile Include="Ipc\IpcCommandHandler.cs" />
+    <Compile Include="Ipc\VsIpcServer.cs" />
+    <Compile Include="Ipc\VsStartupListener.cs" />
+    <Compile Include="Models\ToolResultMessage.cs" />
+    <Content Include="Resources\js\store\app.status.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <Compile Include="Services\ChatPersistenceService.cs" />
     <Compile Include="Infrastructure\Persistence\DefaultFileSystem.cs" />
-    <Compile Include="Common\Defaults.cs" />
+    <Compile Include="Services\ChatSession\ChatSessionOrchestrator.cs" />
+    <Compile Include="Services\ChatSession\ChatSessionOrchestratorFactory.cs" />
+    <Compile Include="Services\ChatSession\ChatSessionState.cs" />
+    <Compile Include="Services\ChatSession\SessionManager.cs" />
+    <Compile Include="Services\ChatSession\SessionStateContext.cs" />
     <Compile Include="Services\InstructionsManager.cs" />
     <Compile Include="Common\JsonExtensions.cs" />
-    <Compile Include="Models\AppSettings.cs" />
-    <Compile Include="Services\SettingsManager.cs" />
-    <Compile Include="Services\ChatGenerationService.cs" />
+    <Compile Include="Services\ModelsListService.cs" />
+    <Compile Include="Services\Settings\AppSettings.cs" />
+    <Compile Include="Services\Settings\AppTheme.cs" />
+    <Compile Include="Services\Settings\SettingsManager.cs" />
+    <Compile Include="Models\ActiveModelContext.cs" />
+    <Compile Include="Services\ChatSeassionStream\ChatStreamService.cs" />
     <Compile Include="Services\ChatHistoryManager.cs" />
     <Compile Include="Models\ChatMessage.cs" />
-    <Compile Include="Models\ExecutePromptRequest.cs" />
+    <Compile Include="Infrastructure\WebView\Models\ExecutePromptRequest.cs" />
     <Compile Include="Models\GenerateStreamContext.cs" />
     <Compile Include="Models\StreamChunk.cs" />
-    <Compile Include="Infrastructure\Vs\ActiveDocumentProvider.cs" />
     <Compile Include="Services\HistoryCompactor.cs" />
     <Compile Include="Common\InternalLogger.cs" />
-    <Compile Include="Services\Stream\LlmSseParser.cs" />
-    <Compile Include="Infrastructure\Lm\LMStudioClient.cs" />
+    <Compile Include="Services\ChatSeassionStream\LlmSseParser.cs" />
+    <Compile Include="Infrastructure\Api\OpenApiAdapter.cs" />
     <Compile Include="Common\MarkdownStripper.cs" />
-    <Compile Include="Services\Stream\StreamInactivityWatcher.cs" />
-    <Compile Include="Services\Stream\StreamProcessor.cs" />
+    <Compile Include="Models\StreamCompletionResult.cs" />
+    <Compile Include="Services\ChatSeassionStream\StreamInactivityWatcher.cs" />
+    <Compile Include="Services\ChatSeassionStream\StreamProcessor.cs" />
     <Compile Include="Infrastructure\Time\SystemTimeProvider.cs" />
     <Compile Include="Models\TokenGenerationStats.cs" />
-    <Compile Include="Services\Stream\TokenSpeedCalculator.cs" />
+    <Compile Include="Services\ChatSeassionStream\StreamProcessorFactory.cs" />
+    <Compile Include="Services\ChatSeassionStream\TokenSpeedCalculator.cs" />
     <Compile Include="Infrastructure\WebView\WebViewScriptExecutor.cs" />
     <Compile Include="Infrastructure\WebView\WebViewBridge.cs" />
     <Compile Include="MainWindow.cs" />
@@ -180,6 +244,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="Resources\js\store\bridge.message.handler.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="Resources\js\store\instructions.store.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
@@ -192,19 +260,27 @@
       <IncludeInVSIX>true</IncludeInVSIX>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Resources\js\workers\md4x.bundle.js">
+    <Content Include="Resources\js\store\startup.manager.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\workers\md4x.worker.client.js">
+    <Content Include="Resources\js\workers\highlight.parser.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\workers\highlight.min.js">
+    <Content Include="Resources\js\workers\md4x\md4x.bundle.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\workers\highlight.worker.client.js">
+    <Content Include="Resources\js\workers\md4x\md4x.worker.client.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\workers\highlight\highlight.min.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\js\workers\highlight\highlight.worker.client.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
@@ -260,8 +336,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Compile Include="Services\Tool\ToolExecutionManager.cs" />
+    <Compile Include="Services\Tool\ToolExecutionResult.cs" />
     <Compile Include="ShowMainWindow.cs" />
-    <Content Include="Resources\js\workers\markdown.worker.client.js">
+    <Content Include="Resources\js\workers\marked\marked.worker.client.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
@@ -287,7 +365,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Resources\js\workers\md4x.wasm">
+    <Content Include="Resources\js\workers\md4x\md4x.wasm">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
@@ -299,6 +377,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <None Include="jsconfig.json" />
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
@@ -311,6 +390,7 @@
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data" />
     <Reference Include="System.Design" />
+    <Reference Include="System.DirectoryServices" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Windows.Forms" />
@@ -319,6 +399,8 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.14.40265" ExcludeAssets="runtime" NoWarn="NU1604">
       <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -345,7 +427,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Resources\js\workers\marked.udm.js">
+    <Content Include="Resources\js\workers\marked\marked.udm.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>

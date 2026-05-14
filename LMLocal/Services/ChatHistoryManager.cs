@@ -1,11 +1,17 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using LMLocal.Common;
+using LMLocal.Infrastructure.Api.Requests;
 using LMLocal.Models;
 
 namespace LMLocal.Services
 {
+
+    /// <summary>
+    /// Keeps track of the chat history, including user and assistant messages, and provides methods to manipulate and retrieve the history.
+    /// </summary>
     internal interface IChatHistoryManager
     {
         void AddUserMessage(string content);
@@ -14,6 +20,8 @@ namespace LMLocal.Services
         IReadOnlyList<ChatMessage> GetHistoryCopy();
         bool ReplaceHistory(string summary, IEnumerable<ChatMessage> recent, int expectedSize);
         List<ChatMessage> BuildUserMessagesWithHistory(string userPrompt, string includedContent = null, string additionalPrompt = null);
+        void AddToolExecutionResultMessage(ChatMessage message);
+        void AddAssistantToolRequestMessage(IReadOnlyList<ToolCallRecord> toolCalls);
     }
 
     internal class ChatHistoryManager : IChatHistoryManager
@@ -24,14 +32,15 @@ namespace LMLocal.Services
         private readonly IChatPersistenceService _persistence;
         private readonly ISettingsManager _settingsManager;
 
-        public ChatHistoryManager(string systemPrompt, IChatPersistenceService persistence = null, ISettingsManager settingsManager = null)
+        public ChatHistoryManager(ISettingsManager settingsManager, IChatPersistenceService persistence = null)
         {
-            _systemPrompt = systemPrompt ?? "";
-            _persistence = persistence;
-            _settingsManager = settingsManager;
+            _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+            _persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
+
+            _systemPrompt = settingsManager?.SystemPrompt ?? "";
+
         }
 
-        // Adds a user message to the history
         public void AddUserMessage(string prompt)
         {
             if (string.IsNullOrEmpty(prompt)) return;
@@ -48,7 +57,7 @@ namespace LMLocal.Services
 
         public void AddAssistantMessage(string content)
         {
-            if (string.IsNullOrEmpty(content)) return;
+            if (string.IsNullOrWhiteSpace(content)) return;
 
             bool compress = _settingsManager?.Current?.EnableHistoryCompression ?? false;
 
@@ -59,6 +68,51 @@ namespace LMLocal.Services
                 _history.Add(assistantMessage);
             }
             _ = _persistence?.SaveLastMessageAsync(assistantMessage, CancellationToken.None);
+        }
+
+        public void AddAssistantToolRequestMessage(IReadOnlyList<ToolCallRecord> toolCalls)
+        {
+            if (toolCalls == null || toolCalls.Count == 0) return;
+
+
+            var toolCallObjects = new List<ToolCall>();
+            foreach (var toolCall in toolCalls)
+            {
+                // Normalize empty arguments to "{}" (empty JSON object) per OpenAI API spec
+                string normalizedArguments = string.IsNullOrEmpty(toolCall.ArgumentsJson) ? "{}" : toolCall.ArgumentsJson;
+
+                toolCallObjects.Add(new ToolCall
+                {
+                    Id = toolCall.CallId,
+                    Type = "function",
+                    Function = new FunctionCallDetails
+                    {
+                        Name = toolCall.FunctionName,
+                        Arguments = normalizedArguments
+                    }
+                });
+            }
+
+            var chatMessage = new ChatMessage("assistant", null);
+            chatMessage.ToolCalls = toolCallObjects;
+
+            lock (_lock)
+            {
+                _history.Add(chatMessage);
+            }
+
+            _ = _persistence?.SaveLastMessageAsync(chatMessage, CancellationToken.None);
+        }
+
+        public void AddToolExecutionResultMessage(ChatMessage message)
+        {
+            if (message == null) return;
+
+            lock (_lock)
+            {
+                _history.Add(message);
+            }
+            _ = _persistence?.SaveLastMessageAsync(message, CancellationToken.None);
         }
 
         public void Clear()
@@ -103,13 +157,12 @@ namespace LMLocal.Services
         {
             if (string.IsNullOrEmpty(userPrompt)) return new List<ChatMessage>();
 
-            bool compress = _settingsManager?.Current?.EnableHistoryCompression ?? false;
+            bool compress = _settingsManager.Current?.EnableHistoryCompression ?? false;
 
             var messages = new List<ChatMessage>();
             lock (_lock)
             {
                 messages.AddRange(_history);
-
 
                 if (!string.IsNullOrEmpty(_systemPrompt))
                 {

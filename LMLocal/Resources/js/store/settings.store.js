@@ -4,12 +4,14 @@ class SettingsStoreClass extends BaseStoreClass {
     constructor() {
         super({
             LmStudioBaseUrl: "http://localhost:1234",
+            ApiKey: "",
             AutoLoadOnStartup: true,
             EnableHistoryCompression: true,
             EnableHistoryCompaction: true,
             Theme: 0,
             StreamInactivityTimeoutSeconds: 20,
-            EnableChatLogging: false
+            EnableChatLogging: false,
+            EnableAiTools: false
         });
     }
 }

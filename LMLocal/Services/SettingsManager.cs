@@ -13,6 +13,7 @@ namespace LMLocal.Services
     /// <summary>
     /// Manages application settings persisted to a local JSON file under
     /// the user's LocalApplicationData folder and provides cached access to those settings.
+    /// Also provides access to default configuration values.
     /// </summary>
     public interface ISettingsManager
     {
@@ -20,6 +21,21 @@ namespace LMLocal.Services
         Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default);
         Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default);
         event Action<AppSettings> SettingsChanged;
+
+        // Default configuration values
+        string ApplicationName { get; }
+        string SettingsFileName { get; }
+        string LocalAppDataFolder { get; }
+        string LocalAppSettingFileName { get; }
+        string LocalAppInstructionsFileName { get; }
+        string WebViewUserDataFolder { get; }
+        string ChatHistoryFolder { get; }
+        string ChatHistoryFilePrefix { get; }
+        string HtmlResourcePath { get; }
+        string VirtualHostName { get; }
+        string DefaultSystemPrompt { get; }
+        int DefaultBatchIntervalMs { get; }
+        int DefaultWindowSeconds { get; }
     }
 
     internal class SettingsManager : ISettingsManager, IDisposable
@@ -32,14 +48,29 @@ namespace LMLocal.Services
         private readonly SemaphoreSlim _saveSemaphore = new SemaphoreSlim(1, 1);
         private bool _disposed;
 
+        // Default configuration constants
+        private const string DefaultApplicationName = "LMLocalChat";
+        private const string DefaultSettingsFileName = "settings.json";
+        private const string DefaultLocalAppDataFolder = "LMLocalChat";
+        private const string DefaultLocalAppSettingFileName = "settings.json";
+        private const string DefaultLocalAppInstructionsFileName = "instructions.json";
+        private const string DefaultWebViewUserDataFolder = "WebViewData";
+        private const string DefaultChatHistoryFolder = "ChatHistory";
+        private const string DefaultChatHistoryFilePrefix = "chat_";
+        private const string DefaultHtmlResourcePath = "Resources/app.html";
+        private const string DefaultVirtualHostName = "app.local";
+        private const string DefaultDefaultSystemPrompt = "You are an expert Senior Software Engineer and Architect.  You are integrated as a plugin into Visual Studio.";
+        private const int DefaultDefaultBatchIntervalMs = 100;
+        private const int DefaultDefaultWindowSeconds = 5;
+
         public event Action<AppSettings> SettingsChanged;
 
         public SettingsManager()
             : this(
                   Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    Defaults.LocalAppDataFolder,
-                    Defaults.LocalAppSettingFileName
+                    DefaultLocalAppDataFolder,
+                    DefaultLocalAppSettingFileName
                   ),
                   null
               )
@@ -58,6 +89,10 @@ namespace LMLocal.Services
             _fileSystem.EnsureDirectoryExistsForFile(filePath);
             _filePath = filePath;
         }
+
+        /// <summary>
+        /// Gets the current application settings.
+        /// </summary>
         public AppSettings Current
         {
             get
@@ -69,13 +104,29 @@ namespace LMLocal.Services
             }
         }
 
+        /// <summary>
+        /// Default configuration values (implementing default constants).
+        /// </summary>
+        public string ApplicationName => DefaultApplicationName;
+        public string SettingsFileName => DefaultSettingsFileName;
+        public string LocalAppDataFolder => DefaultLocalAppDataFolder;
+        public string LocalAppSettingFileName => DefaultLocalAppSettingFileName;
+        public string LocalAppInstructionsFileName => DefaultLocalAppInstructionsFileName;
+        public string WebViewUserDataFolder => DefaultWebViewUserDataFolder;
+        public string ChatHistoryFolder => DefaultChatHistoryFolder;
+        public string ChatHistoryFilePrefix => DefaultChatHistoryFilePrefix;
+        public string HtmlResourcePath => DefaultHtmlResourcePath;
+        public string VirtualHostName => DefaultVirtualHostName;
+        public string DefaultSystemPrompt => DefaultDefaultSystemPrompt;
+        public int DefaultBatchIntervalMs => DefaultDefaultBatchIntervalMs;
+        public int DefaultWindowSeconds => DefaultDefaultWindowSeconds;
+
         public async Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
 
             if (settings == null) throw new ArgumentNullException(nameof(settings));
 
-            // Attempt to correct known issues (e.g. invalid enum values) before validating.
             EnsureValidSettings(settings);
 
             if (!TryValidateSettings(settings, out var _errors))
@@ -216,16 +267,11 @@ namespace LMLocal.Services
             }
         }
 
-        /// <summary>
-        /// Async variant of ReadAndUpdateCache that performs file IO asynchronously
-        /// outside of the cache semaphore to avoid blocking UI threads.
-        /// </summary>
         private async Task<(AppSettings previous, AppSettings loaded)> ReadAndUpdateCacheAsync(CancellationToken cancellationToken)
         {
             AppSettings previous = null;
             AppSettings loaded;
 
-            // Snapshot current cache reference to detect concurrent updates while we perform IO.
             var snapshot = _cachedSettings;
 
             if (!_fileSystem.FileExists(_filePath))
@@ -253,11 +299,9 @@ namespace LMLocal.Services
             lock (_lock)
             {
                 previous = _cachedSettings;
-                // If cache changed while we were reading the file, prefer the newer cache value
-                // and avoid overwriting it with potentially stale file contents.
+
                 if (!ReferenceEquals(previous, snapshot))
                 {
-                    // another thread updated the cache (likely via SaveAsync); keep that value
                     loaded = previous;
                 }
                 else
@@ -279,7 +323,6 @@ namespace LMLocal.Services
                 var loaded = content.FromJson<AppSettings>();
                 if (loaded == null) return new AppSettings();
 
-                // Try to correct known issues before validation (e.g. malformed enum values).
                 EnsureValidSettings(loaded);
 
                 if (!TryValidateSettings(loaded, out var _errors))
@@ -305,10 +348,6 @@ namespace LMLocal.Services
             }
         }
 
-        /// <summary>
-        /// Validate an AppSettings instance using DataAnnotations attributes. Returns true when valid;
-        /// otherwise returns false and fills the provided errors collection with human-readable messages.
-        /// </summary>
         private bool TryValidateSettings(AppSettings settings, out System.Collections.Generic.List<string> errors)
         {
             errors = new System.Collections.Generic.List<string>();

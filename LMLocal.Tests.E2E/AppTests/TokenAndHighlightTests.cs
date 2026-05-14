@@ -14,8 +14,9 @@ public class TokenAndHighlightTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete - check that response container is visible and not generating
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         await Expect(Page.Locator(".ai-message pre")).ToBeVisibleAsync();
         await Expect(Page.Locator(".ai-message pre code")).ToBeVisibleAsync();
@@ -32,8 +33,9 @@ public class TokenAndHighlightTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete - check that response container is visible and not generating
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         var hasHljs = await Page.Locator(".ai-message pre code.hljs").CountAsync();
         Assert.That(hasHljs, Is.GreaterThan(0),
@@ -51,8 +53,9 @@ public class TokenAndHighlightTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete - check that response container is visible and not generating
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         await Expect(Page.Locator(".header-copy-btn")).ToBeVisibleAsync();
     }
@@ -68,8 +71,9 @@ public class TokenAndHighlightTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete - check that response container is visible and not generating
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         await Page.Locator(".header-copy-btn").ClickAsync();
         await Expect(Page.Locator(".header-copy-btn span"))
@@ -173,10 +177,13 @@ public class TokenAndHighlightTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Token counter is visible during streaming and FINISHING state
+        // It remains visible as long as isBusy() returns true (which includes FINISHING)
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
-        await Expect(Page.Locator("#live-token-count")).ToBeHiddenAsync();
+        // Verify token counter is still visible during post-processing (FINISHING state)
+        await Expect(Page.Locator("#live-token-count")).ToBeVisibleAsync();
     }
 
     [Test]
@@ -190,8 +197,9 @@ public class TokenAndHighlightTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         await Expect(Page.Locator("#token-number"))
             .ToHaveTextAsync("10 tokens", new() { Timeout = 3000 });
@@ -212,7 +220,8 @@ public class TokenAndHighlightTests : AppTestBase
         await Expect(speedSpan).ToBeVisibleAsync(new() { Timeout = 3000 });
         await Expect(speedSpan).ToHaveTextAsync(TokensPerSecond, new() { Timeout = 3000 });
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 10000 });
+        // Wait for streaming to complete
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
     }
 }

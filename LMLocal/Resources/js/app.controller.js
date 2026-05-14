@@ -1,20 +1,25 @@
 import { statusComponent } from '@app/components/status.component.js';
 import { menuComponent } from '@app/components/menu.component.js';
 import { inputComponent } from '@app/components/input.component.js';
-import themeComponent from '@app/components/theme.component.js';
+import { themeComponent } from '@app/components/theme.component.js';
+import { toolbarComponent } from '@app/components/toolbar.component.js';
 import chatController from '@app/chat/chat.controller.js';
 import appManager from '@app/store/app.manager.js';
+import { bridgeMessageHandler } from '@app/store/bridge.message.handler.js';
 import appStore from '@app/store/app.store.js';
-import { appSelectors }  from '@app/store/app.selectors.js';
+import { appSelectors } from '@app/store/app.selectors.js';
 import modelStore from '@app/store/model.store.js';
 import instructionsStore from '@app/store/instructions.store.js';
 import settingsStore from '@app/store/settings.store.js';
 import bridgeMessageDispatcher from '@app/api/bridge.message.dispatcher.js';
+import appDataService from '@app/services/app.data.service.js';
 
 import { ConfirmDialog } from '@app/dialogs/confirm.dialog.js';
 import { SettingsDialog } from '@app/dialogs/settings.dialog.js';
 import { InstructionsDialog } from '@app/dialogs/instructions.dialog.js';
+import { ModelSelectorDialog } from '@app/dialogs/models.list.dialog.js';
 import { UIText } from '@app/store/app.globals.js';
+
 /**
  * AppController - central initializer and event router.
  * Waits for required DOM elements, initializes UI components (Status, Input, Chat, Menu),
@@ -36,13 +41,14 @@ class AppController {
         this.reset();
 
         statusComponent.setup();
+        toolbarComponent.setup();
         inputComponent.setup();
         chatController.setup();
         menuComponent.setup();
 
         this._attachEvents();
 
-        bridgeMessageDispatcher.start(appManager);
+        bridgeMessageDispatcher.start(bridgeMessageHandler);
         this._initialized = true;
     }
 
@@ -54,6 +60,7 @@ class AppController {
         bridgeMessageDispatcher.stop();
 
         statusComponent.reset();
+        toolbarComponent.reset();
         inputComponent.reset();
         chatController.reset();
         menuComponent.reset();
@@ -62,16 +69,15 @@ class AppController {
     }
 
     _attachEvents() {
-        this._storeListener = (state, prev) => {
-            statusComponent.update(state, prev);
-            inputComponent.update(state, prev);
-            chatController.update(state, prev);
+        this._storeListener = (appState, prevAppState) => {
+            statusComponent.update(appState, prevAppState);
+            inputComponent.update(appState, prevAppState);
+            chatController.update(appState, prevAppState);
         };
         appStore.subscribe(this._storeListener);
 
         this._modelListener = (state, prev) => {
-            statusComponent.updateModelName(state.modelName, prev?.modelName);
-            statusComponent.updateModelContext(state.tokenMax, prev?.tokenMax);
+            toolbarComponent.updateModelState(state, prev);
         };
         modelStore.subscribe(this._modelListener);
 
@@ -88,10 +94,9 @@ class AppController {
         themeComponent.setup();
 
         inputComponent.onClick.on(async (text, hasActiveContent, instructionsMode) => {
-            const isGenerating = appSelectors.isGenerating(appStore.getState());
+            const isGenerating = appSelectors.isBusy(appStore.getState().status);
             if (isGenerating) {
-                appStore.setState({ userMessage: text });
-                await appManager.performStop();
+                await appManager.performStop(text);
                 return false;
             } else if (text && text.trim()) {
                 await appManager.performSendMessage(text, hasActiveContent, instructionsMode);
@@ -110,10 +115,6 @@ class AppController {
 
         chatController.onCopyCode.on(async (text) => {
             return await appManager.performCopyCode(text);
-        });
-
-        chatController.onHighlightCode.on(() => {
-            return appManager.handleHighlightingEnd();
         });
 
         menuComponent.onClick.on(async (action) => {
@@ -135,11 +136,9 @@ class AppController {
                     await settingsDialog.show();
                     return true;
                 case 'open-instructions':
-                    //disabled due beta feedback, will be re-enabled in the future
-                    return true;
                     const instructionsDialog = new InstructionsDialog();
                     instructionsDialog.onLoad.on(async () => {
-                        return await appManager.getInstructions();
+                        return await appManager.getInstructionsAsync();
                     });
                     instructionsDialog.onSave.on(async (json) => {
                         return await appManager.updateInstructions(json);
@@ -151,8 +150,29 @@ class AppController {
             }
         });
 
+        toolbarComponent.onModelNameClick.on(async () => {
+            const response = await appDataService.loadModels();
+            if (response && response.models && response.models.length > 0) {
+                const dialog = new ModelSelectorDialog(response.models);
+
+                dialog.onLoad.on(async () => {
+                    return await appDataService.loadModels();
+                });
+
+                dialog.onSelect.on(async (selectedModel) => {
+                    if (selectedModel) {
+                        await appDataService.setActiveModel(selectedModel.id, selectedModel.name, selectedModel.supportsMaxTokens, selectedModel.maxTokens || 0);
+                        return true;
+                    }
+                    return false;
+                });
+
+                await dialog.show();
+            }
+        });
+
         statusComponent.onRetry.on(async () => {
-            await appManager.loadStatus();
+            await appManager.reloadActiveModel();
         });
 
         this._globalClickHandler = () => {
@@ -191,9 +211,9 @@ class AppController {
         inputComponent.onClick.off();
         inputComponent.onEnter.off();
         chatController.onCopyCode.off();
-        chatController.onHighlightCode.off();
         menuComponent.onClick.off();
         statusComponent.onRetry.off();
+        statusComponent.onModelNameClick.off();
     }
 
     get initialized() {

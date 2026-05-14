@@ -1,25 +1,25 @@
 import bridgeClient from '@app/api/bridge.client.js';
 
 /**
- * BridgeMessageDispatcher - binds a single listener to the host/webview `message`
- * event and routes validated messages to the supplied `AppManager`.
- * Converted to class with singleton `bridgeMessageDispatcher`.
+ * BridgeMessageDispatcher - Singleton that binds a single listener to the WebView2 `message` event
+ * and routes validated messages to the supplied `AppManager` based on message type.
  */
 class BridgeMessageDispatcher {
     constructor() {
         this._isListening = false;
-        this.appManager = null;
+        this._handler = null;
 
         this._onMessage = this._onMessage.bind(this);
     }
 
-    start(manager) {
-        if (!manager) {
+    start(handler) {
+
+        if (!handler) {
             console.error('[BridgeMessageDispatcher] AppManager is required');
             return;
         }
 
-        this.appManager = manager;
+        this._handler = handler;
 
         const webview = bridgeClient.getWebview();
         if (!webview) {
@@ -39,44 +39,61 @@ class BridgeMessageDispatcher {
             webview.removeEventListener('message', this._onMessage);
             this._isListening = false;
         }
-        this.appManager = null;
+        this._handler = null;
     }
 
     _onMessage(event) {
-        if (!this.appManager) {
+        if (!this._handler) {
             console.warn('[BridgeMessageDispatcher] No AppManager, ignoring message');
             return;
         }
 
-        const { Type, Payload, Count, TokensPerSecond } = event.data;
-        switch (Type) {
+        const data = event.data;
+        switch (data.Type) {
+            case 'ChatSessionStart':
+                this._handler.handleChatSessionStart();
+                break;
+            case 'ChatSessionIterating':
+                this._handler.handleChatSessionIterating();
+                break;
+            case 'ChatSessionComplete':
+                this._handler.handleChatSessionComplete(data);
+                break;
+            case 'ChatSessionError':
+                this._handler.handleChatSessionError(data.Payload);
+                break;
+            case 'ChatSessionCancelled':
+                this._handler.handleChatSessionCancelled(data.Payload);
+                break;
+
             case 'StreamContent':
-                this.appManager.handleStreamContent(Payload, Count, TokensPerSecond);
+                this._handler.handleStreamContent(data.Payload, data.Count, data.TokensPerSecond);
                 break;
             case 'StreamThought':
-                this.appManager.handleStreamThought(Payload, Count, TokensPerSecond);
+                this._handler.handleStreamThought(data.Payload, data.Count, data.TokensPerSecond);
                 break;
             case 'StreamEnd':
-                this.appManager.handleStreamEnd();
+                this._handler.handleStreamEnd();
                 break;
-            case 'StreamError':
-                if (String(Payload || '').toLowerCase().includes("disconnected")) {
-                    this.appManager.onFatalError(Payload);
-                } else {
-                    this.appManager.handleStreamError(Payload);
-                }
+
+            case 'StreamToolCall':
+                this._handler.handleStreamToolCall(data);
                 break;
+            case 'StreamToolEnd':
+                this._handler.handleStreamToolEnd(data);
+                break;
+
             case 'CompactionStart':
-                this.appManager.onCompactionStart();
+                this._handler.handleCompactionStart();
                 break;
             case 'CompactionEnd':
-                this.appManager.onCompactionEnd();
+                this._handler.handleCompactionEnd();
                 break;
+
             default:
-                console.warn('[BridgeMessageDispatcher] Unknown message type:', Type);
+                console.warn('[BridgeMessageDispatcher] Unknown message type:', data.Type);
         }
     }
-
     get isListening() {
         return this._isListening;
     }

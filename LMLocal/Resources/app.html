@@ -5,18 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link id="hljs-theme" rel="stylesheet" href="https://app.local/css/hljs.dark.css">
     <link rel="stylesheet" href="https://app.local/css/app.css">
+    <link rel="stylesheet" href="https://app.local/css/dialog.css">
+    <link rel="stylesheet" href="https://app.local/css/toolbar.css">
 </head>
 <body>
 
     <div id="top-info-bar">
-        <div class="context-bar-wrapper" id="info-tooltip" title="Context usage: 0%">
+        <div class="context-bar-wrapper" id="info-tooltip" title="">
             <div class="progress-container"><div id="token-bar-fill"></div></div>
         </div>
-        <div class="model-info">
-            <span id="conn-status" class="retryable">Connecting </span>
+        <div class="connection-info">
+            <span id="conn-status" class="retryable">Disconnected</span>
             <button id="retry-btn" style="display:none;" title="Retry connection">↻</button>
-            <span id="status-separator" style="display:none"> · </span>
-            <span id="model-name">...</span>
+
+        </div>
+        <div id="status-separator" > · </div>
+        <div class="model-info">
+            <span id="model-name">Select model...</span>
         </div>
         <div class="menu-container">
             <button id="menu-btn" class="btn-clear-icon" title="Menu">
@@ -26,7 +31,7 @@
             </button>
 
             <div id="dropdown-menu" class="dropdown-content">
-                <button data-action="open-instructions" style="display:none;">
+                <button data-action="open-instructions" style="display:none">
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px; flex-shrink: 0;">
                         <path fill-rule="evenodd" d="M2.667 4h10.666C14.066 4 15 4.934 15 6.083v5.834c0 1.15-.934 2.083-2.667 2.083H7.5L4.167 16v-2H2.667C1.534 14 .667 13.067.667 11.917V6.083C.667 4.934 1.6 4 2.667 4zm0 1c-.367 0-.667.3-.667.667v5.833c0 .367.3.667.667.667H5v2l2.5-2h5.833c.367 0 .667-.3.667-.667V5.667c0-.367-.3-.667-.667-.667H2.667z" />
                     </svg>
@@ -64,7 +69,7 @@
             <textarea id="userInput" placeholder="Ask LMLocal..." rows="1" autofocus></textarea>
             <div class="input-footer">
                 <div class="input-footer-left">
-                    <div class="dropdown" id="actionDropdown">
+                    <div class="dropdown" id="actionDropdown"  style="display:none">
                         <button type="button" class="btn-action dropdown-trigger" title="AI instructions mode">
                             <span id="selectedOption">None</span>
                             <span class="arrow">▾</span>
@@ -92,29 +97,57 @@
     </dialog>
 
     <dialog id="settings-dialog">
-        <div class="modal-header">Settings</div>
+        <div class="modal-header">Extension settings</div>
         <div class="modal-body">
             <form id="settings-form">
                 <div class="settings-group">
-                    <label for="baseUrl" class="settings-label">LM Studio URL</label>
+                    <label for="LmStudioBaseUrl" class="settings-label">API base URL</label>
                     <span class="settings-description">
-                        Base URL of the LM Studio backend. Used to build HTTP requests.
+                        Base URL of your local or remote LLM server (LM Studio, Ollama, or OpenAI-compatible API).
                     </span>
-                    <input type="url" data-setting="LmStudioBaseUrl" placeholder="http://localhost:1234" required pattern="https?://.+">
+                    <input type="url" name="LmStudioBaseUrl" data-setting="LmStudioBaseUrl" placeholder="http://localhost:1234" required pattern="https?://.+">
                 </div>
                 <div class="settings-group">
-                    <label for="streamTimeout" class="settings-label">Stream inactivity timeout (seconds)</label>
+                    <label for="ApiKey" class="settings-label">API key</label>
                     <span class="settings-description">
-                        Max seconds to wait for new data before timing out. Increase for slow local models. Set to 0 to disable timeout.
+                        Your API key for authentication. Optional for most local servers (LM Studio, Ollama).
                     </span>
-                    <input type="number" data-setting="StreamInactivityTimeoutSeconds" min="0" max="100" value="20" step="1">
+                    <div class="password-input-container">
+                        <input type="password" name="ApiKey" data-setting="ApiKey" autocomplete="off">
+                        <button type="button" class="password-toggle" title="Show/Hide">
+                            <svg class="eye-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M8 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM8 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
+                                <path d="M8 3C4 3 1.5 8 1.5 8S4 13 8 13s6.5-5 6.5-5S12 3 8 3zm0 8.5c-2.5 0-4.5-3.5-4.5-3.5S5.5 4.5 8 4.5s4.5 3.5 4.5 3.5S10.5 11.5 8 11.5z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <label for="streamTimeout" class="settings-label">Streaming timeout (seconds)</label>
+                    <span class="settings-description">
+                        How long to wait for the next word or token after the first one arrives. Increase for slower local models. 0 = never timeout.
+                    </span>
+                    <input type="number" name="StreamInactivityTimeoutSeconds" data-setting="StreamInactivityTimeoutSeconds" min="0" max="100" value="20" step="1">
                 </div>
                 <div class="settings-group checkbox-group">
                     <label class="checkbox-container">
                         <input type="checkbox" data-setting="AutoLoadOnStartup">
                         <span class="checkbox-content-wrapper">
-                            <span class="checkbox-title">Auto-load on startup</span>
-                            <span class="checkbox-description">When true, the application will attempt to connect to LM Studio on startup.</span>
+                            <span class="checkbox-title">Connect on startup</span>
+                            <span class="checkbox-description">Automatically connect to the LLM server on startup and select the first pre-loaded model.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="settings-group checkbox-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" data-setting="EnableAiTools">
+                        <span class="checkbox-content-wrapper">
+                            <span class="checkbox-title">Enable AI Tools (beta)</span>
+                            <span class="checkbox-description">Allows the AI to see your open solution and read files for smarter, context‑aware help.
+                                <span style="display: block; margin-top: 6px; opacity: 0.6; font-size: 0.9em; font-style: italic;">
+                                    Requires a model that supports function calling.
+                                </span>
+                            </span>
                         </span>
                     </label>
                 </div>
@@ -122,8 +155,8 @@
                     <label class="checkbox-container">
                         <input type="checkbox" data-setting="EnableHistoryCompression">
                         <span class="checkbox-content-wrapper">
-                            <span class="checkbox-title">Enable history compression</span>
-                            <span class="checkbox-description">When true, message history is cleaned of markdown and trimmed to reduce token usage.</span>
+                            <span class="checkbox-title">Strip formatting from history</span>
+                            <span class="checkbox-description">Removes markdown formatting and trims extra whitespace to reduce token usage without losing meaning.</span>
                         </span>
                     </label>
                 </div>
@@ -131,8 +164,8 @@
                     <label class="checkbox-container">
                         <input type="checkbox" data-setting="EnableHistoryCompaction">
                         <span class="checkbox-content-wrapper">
-                            <span class="checkbox-title">Enable history compaction</span>
-                            <span class="checkbox-description">When true, older conversation history is summarized into a concise summary as context limits are approached.</span>
+                            <span class="checkbox-title">Summarize long conversations</span>
+                            <span class="checkbox-description">When the conversation gets long, older messages are summarized into a concise overview to save tokens.</span>
                         </span>
                     </label>
                 </div>
@@ -141,14 +174,14 @@
                         <input type="checkbox" data-setting="EnableChatLogging">
                         <span class="checkbox-content-wrapper">
                             <span class="checkbox-title">Enable chat logging</span>
-                            <span class="checkbox-description">Saves chat history locally for future reference. Logs are stored in the extension's local data folder.</span>
+                            <span class="checkbox-description">Saves all conversations to disk. You can find logs in <code>%LOCALAPPDATA%\LMLocalChat\ChatHistory\</code></span>
                         </span>
                     </label>
                 </div>
                 <div class="settings-group">
-                    <label class="settings-label">Theme</label>
+                    <div class="settings-label">Theme</div>
                     <span class="settings-description">
-                        Switch between dark and light modes for the interface.
+                        Choose your preferred color scheme.
                     </span>
                     <div class="theme-picker">
                         <label class="radio-item">
@@ -189,6 +222,29 @@
             <button id="dialog-confirm" class="btn-main">Save</button>
         </div>
     </dialog>
+
+    <dialog id="model-selector-dialog" class="model-modal">
+        <div class="modal-header">
+            <span>Select active model</span>
+            <button id="model-refresh-top" class="ui-icon-btn" title="Refresh list">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.53 2.3A6.995 6.995 0 0 0 8 1a7 7 0 1 0 7 7h-1.5a5.5 5.5 0 1 1-1.39-3.64l-1.24 1.24H15V1.47l-1.35 1.35z" /></svg>
+            </button>
+        </div>
+
+        <div class="modal-container">
+            <div id="models-list-container" class="models-grid">
+                <div class="loading-placeholder">
+                    <div class="spinner"></div>
+                    <span>Fetching models from endpoint...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button id="model-selector-close">Close</button>
+        </div>
+    </dialog>
+
 
     <script type="importmap">
         {

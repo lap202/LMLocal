@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,40 +13,48 @@ namespace LMLocal.Services
 {
     internal interface IStreamProcessor
     {
-        Task<string> ProcessStreamAsync(Stream stream, CancellationToken cancellationToken);
+        Task<StreamCompletionResult> ProcessStreamAsync(Stream stream, CancellationToken cancellationToken);
     }
 
     internal class StreamProcessor : IStreamProcessor
     {
-        private readonly Func<StreamChunk, TokenGenerationStats, Task> _onChunk;
-        private readonly Func<string, Task> _onError;
-        private readonly Func<Task> _onEnd;
+        private readonly Func<TextStreamChunk, TokenGenerationStats, Task> _onChunk;
         private readonly int _batchIntervalMs;
         private readonly ITokenSpeedCalculator _tokenSpeedCalculator;
         private readonly IStreamInactivityWatcher _inactivityWatcher;
 
-        public StreamProcessor(Func<StreamChunk, TokenGenerationStats, Task> onChunk, Func<string, Task> onError, Func<Task> onEnd, int batchIntervalMs = 50, ITokenSpeedCalculator tokenSpeedCalculator = null, IStreamInactivityWatcher inactivityWatcher = null)
+        private readonly Dictionary<int, (string CallId, string FunctionName)> _toolCallMetadata =
+            new Dictionary<int, (string CallId, string FunctionName)>();
+
+        public StreamProcessor(
+            Func<TextStreamChunk, TokenGenerationStats, Task> onChunk,
+            ITokenSpeedCalculator tokenSpeedCalculator,
+            IStreamInactivityWatcher inactivityWatcher = null,
+            int batchIntervalMs = 50)
         {
             _onChunk = onChunk;
-            _onError = onError;
-            _onEnd = onEnd;
             _batchIntervalMs = batchIntervalMs;
             _tokenSpeedCalculator = tokenSpeedCalculator;
             _inactivityWatcher = inactivityWatcher;
         }
 
-        public async Task<string> ProcessStreamAsync(
+        public async Task<StreamCompletionResult> ProcessStreamAsync(
             Stream stream,
             CancellationToken cancellationToken)
         {
-
             cancellationToken.ThrowIfCancellationRequested();
 
             var fullResponse = new StringBuilder();
             var contentBuffer = new StringBuilder();
             var reasoningBuffer = new StringBuilder();
+            var toolCallBuffers = new Dictionary<int, StringBuilder>();
+
+            var result = new StreamCompletionResult
+            {
+                TokenUsage = new TokenUsageMetadata()
+            };
+
             int currentTokens = 0;
-            var speedCalculator = _tokenSpeedCalculator ?? (ITokenSpeedCalculator)new TokenSpeedCalculator(windowSeconds: 5);
 
             var syncLock = new object();
             bool isReading = true;
@@ -66,15 +76,14 @@ namespace LMLocal.Services
                                 return lastLineMs;
                             }
                         },
-                        cancellationToken
-                    );
+                        cancellationToken);
                 }
 
                 var consumerTask = Task.Run(async () =>
                 {
                     while (true)
                     {
-                        StreamChunk? chunkToSend = null;
+                        TextStreamChunk chunkToSend = null;
                         TokenGenerationStats statsToSend = default;
                         bool done = false;
 
@@ -84,28 +93,27 @@ namespace LMLocal.Services
                             {
                                 var t = reasoningBuffer.ToString();
                                 reasoningBuffer.Clear();
-                                chunkToSend = new StreamChunk(t, ChunkKind.Reasoning);
+                                chunkToSend = new TextStreamChunk(t, ChunkKind.Reasoning);
                             }
                             else if (contentBuffer.Length > 0)
                             {
                                 var t = contentBuffer.ToString();
                                 contentBuffer.Clear();
-                                chunkToSend = new StreamChunk(t, ChunkKind.Content);
+                                chunkToSend = new TextStreamChunk(t, ChunkKind.Content);
                             }
 
-                            statsToSend = new TokenGenerationStats(currentTokens, speedCalculator.GetTokensPerSecond());
+                            statsToSend = new TokenGenerationStats(currentTokens, _tokenSpeedCalculator.GetTokensPerSecond());
                             done = !isReading && reasoningBuffer.Length == 0 && contentBuffer.Length == 0;
                         }
 
-                        if (chunkToSend.HasValue && !chunkToSend.Value.IsEmpty && _onChunk != null)
+                        if (chunkToSend != null && !chunkToSend.IsEmpty && _onChunk != null)
                         {
-                            await _onChunk(chunkToSend.Value, statsToSend).ConfigureAwait(false);
+                            await _onChunk(chunkToSend, statsToSend).ConfigureAwait(false);
                         }
 
                         if (done || cancellationToken.IsCancellationRequested)
                         {
                             _inactivityWatcher?.SignalCompletion();
-
                             break;
                         }
 
@@ -132,80 +140,118 @@ namespace LMLocal.Services
                             {
                                 lastLineMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                             }
-                            if (string.IsNullOrWhiteSpace(line)) continue;
 
-                            int tempTokens = currentTokens;
-                            var chunk = LlmSseParser.ExtractDelta(line, ref tempTokens);
+                            if (string.IsNullOrWhiteSpace(line))
+                                continue;
 
-                            if (chunk.Equals(default(StreamChunk)) == false)
+                            var chunk = LlmSseParser.ExtractDelta(line);
+
+                            if (chunk == null)
+                                continue;
+
+                            lock (syncLock)
                             {
-                                lock (syncLock)
+                                if (chunk is TextStreamChunk textChunk)
                                 {
-                                    if (chunk.Kind == ChunkKind.Reasoning)
+                                    switch (textChunk.Kind)
                                     {
-                                        reasoningBuffer.Append(chunk.Text);
+                                        case ChunkKind.Reasoning:
+                                            reasoningBuffer.Append(textChunk.Text);
+                                            break;
+                                        case ChunkKind.Content:
+                                            contentBuffer.Append(textChunk.Text);
+                                            fullResponse.Append(textChunk.Text);
+                                            break;
+                                        case ChunkKind.ToolCallArguments:
+
+                                            int bufferIndex = textChunk.ToolCallIndex ?? 0;
+                                            if (!toolCallBuffers.ContainsKey(bufferIndex))
+                                                toolCallBuffers[bufferIndex] = new StringBuilder();
+                                            toolCallBuffers[bufferIndex].Append(textChunk.Text);
+                                            break;
                                     }
-                                    else
-                                    {
-                                        contentBuffer.Append(chunk.Text);
-                                        fullResponse.Append(chunk.Text);
-                                    }
-                                    currentTokens = tempTokens;
-                                    speedCalculator.Update(currentTokens);
+                                    currentTokens++;
+                                    _tokenSpeedCalculator.Update(currentTokens);
+                                }
+                                else if (chunk is ToolCallMetadataChunk metadata)
+                                {
+                                    _toolCallMetadata[metadata.Index] = (metadata.CallId, metadata.FunctionName);
+
+                                    if (!toolCallBuffers.ContainsKey(metadata.Index))
+                                        toolCallBuffers[metadata.Index] = new StringBuilder();
+                                }
+                                else if (chunk is CompletionStreamChunk completion)
+                                {
+                                    if (!string.IsNullOrEmpty(completion.FinishReason))
+                                        result.FinishReason = completion.FinishReason;
+
+                                    if (completion.TotalTokens.HasValue)
+                                        result.TokenUsage.TotalTokens = completion.TotalTokens;
+
+                                    if (completion.PromptTokens.HasValue)
+                                        result.TokenUsage.PromptTokens = completion.PromptTokens;
+
+                                    if (completion.CompletionTokens.HasValue)
+                                        result.TokenUsage.CompletionTokens = completion.CompletionTokens;
+
+                                    if (completion.ReasoningTokens.HasValue)
+                                        result.TokenUsage.ReasoningTokens = completion.ReasoningTokens;
+
+                                    if (!string.IsNullOrEmpty(completion.Refusal))
+                                        result.RefusalReason = completion.Refusal;
+
+                                    if (!string.IsNullOrEmpty(completion.SystemFingerprint))
+                                        result.SystemFingerprint = completion.SystemFingerprint;
                                 }
                             }
                         }
                     }
                     finally
                     {
-                        lock (syncLock) { isReading = false; }
+                        lock (syncLock)
+                        {
+                            isReading = false;
+                        }
+
                         cancelRegistration.Dispose();
                         _inactivityWatcher?.SignalCompletion();
                     }
                 }
 
                 await consumerTask.ConfigureAwait(false);
-
                 await inactivityWatcherTask.ConfigureAwait(false);
-
-                await _onEnd().ConfigureAwait(false);
-
             }
             catch (ObjectDisposedException ex)
             {
                 if (_inactivityWatcher?.IsTimeout == true)
                 {
                     InternalLogger.Info($"Stream canceled due to inactivity timeout: {ex.Message}");
-                    if (_onError != null) await _onError("Stream canceled due to inactivity timeout").ConfigureAwait(false);
+                    result.ErrorMessage = "Stream canceled due to inactivity timeout";
                 }
                 else
                 {
-                    InternalLogger.Info($"Stream canceled: {ex.Message}");
-                    if (_onEnd != null) await _onEnd().ConfigureAwait(false);
+                    InternalLogger.Info($"Stream canceled by user: {ex.Message}");
                 }
-
+                result.WasCancelled = true;
             }
             catch (OperationCanceledException ex)
             {
                 if (_inactivityWatcher?.IsTimeout == true)
                 {
                     InternalLogger.Info($"Stream canceled due to inactivity timeout: {ex.Message}");
-                    if (_onError != null) await _onError("Stream canceled due to inactivity timeout").ConfigureAwait(false);
+                    result.ErrorMessage = "Stream canceled due to inactivity timeout";
                 }
                 else
                 {
-                    InternalLogger.Info($"Stream canceled: {ex.Message}");
-                    if (_onEnd != null) await _onEnd().ConfigureAwait(false);
+                    InternalLogger.Info($"Stream canceled by user: {ex.Message}");
                 }
-
+                result.WasCancelled = true;
             }
             catch (Exception ex)
             {
                 InternalLogger.Error($"Error in StreamProcessor: {ex.Message}", ex);
-                if (_onError != null)
-                {
-                    await _onError(ex.Message).ConfigureAwait(false);
-                }
+                result.ErrorMessage = ex.Message;
+                result.WasCancelled = true;
             }
             finally
             {
@@ -213,8 +259,36 @@ namespace LMLocal.Services
                 _inactivityWatcher?.SignalCompletion();
             }
 
-            return fullResponse.ToString();
-        }
+            result.ContentResponse = fullResponse.ToString();
 
+            var toolCalls = new List<ToolCallRecord>();
+            foreach (var bufferEntry in toolCallBuffers.OrderBy(kvp => kvp.Key))
+            {
+                int index = bufferEntry.Key;
+                string argumentsJson = bufferEntry.Value.ToString();
+
+                if (_toolCallMetadata.TryGetValue(index, out var metadata))
+                {
+                    toolCalls.Add(new ToolCallRecord
+                    {
+                        Index = index,
+                        CallId = metadata.CallId,
+                        FunctionName = metadata.FunctionName,
+                        ArgumentsJson = argumentsJson
+                    });
+                }
+            }
+
+            if (toolCalls.Count > 0)
+            {
+                result.ToolCalls = toolCalls.AsReadOnly();
+            }
+            else
+            {
+                result.ToolCalls = new List<ToolCallRecord>().AsReadOnly();
+            }
+
+            return result;
+        }
     }
 }

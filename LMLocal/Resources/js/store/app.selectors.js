@@ -1,11 +1,11 @@
-﻿import { AppStatus } from '@app/store/app.globals.js';
+﻿import { AppStatus } from '@app/store/app.status.js';
 
 export const appSelectors = {
-    isTerminal: (state) => [AppStatus.OFFLINE, AppStatus.IDLE, AppStatus.ERROR].includes(state.status),
+    isTerminal: (status) => [AppStatus.OFFLINE, AppStatus.IDLE, AppStatus.ERROR].includes(status),
     // Busy if not IDLE (includes STOPPING, CONNECTING, OFFLINE, etc.)
-    isBusy: (state) => ![AppStatus.IDLE, AppStatus.ERROR].includes(state.status),
+    isBusy: (status) => ![AppStatus.IDLE, AppStatus.ERROR, AppStatus.OFFLINE].includes(status),
     // Generating only during active token flow
-    isGenerating: (state) => [AppStatus.PROCESSING, AppStatus.THINKING, AppStatus.STREAMING].includes(state.status),
-    // Can send only when truly idle (implies online and if an error)
-    canSend: (state) => [AppStatus.IDLE, AppStatus.ERROR].includes(state.status)
+    isGenerating: (status) => [AppStatus.PROCESSING, AppStatus.THINKING, AppStatus.STREAMING, AppStatus.EXECUTING, AppStatus.RESPONDING, AppStatus.FINISHING].includes(status),
+    // Can send requests when online
+    canSend: (status) => [AppStatus.IDLE, AppStatus.ERROR].includes(status),
 };

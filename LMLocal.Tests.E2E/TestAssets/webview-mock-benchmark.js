@@ -42,9 +42,32 @@ const __mockBridge = {
             if (i !== -1) _listeners.splice(i, 1);
         }
     },
-    GetStatusAsync: async () => JSON.stringify({
-        Status: "SUCCESS", ModelName: "Benchmark Model", MaxContext: 16384, UsedTokens: 0
+    ListModelsAsync: async () => JSON.stringify({
+        models: [
+            {
+                id: "test-model-1",
+                name: "Benchmark Model",
+                maxTokens: 16384,
+                supportsMaxTokens: true,
+                isActive: false,
+                supportsToolUse: null
+            }
+        ],
+        hasActiveModel: true,
+        activeModel: {
+            id: "test-model-instance",
+            name: "Benchmark Model",
+            maxTokens: 16384,
+            supportsMaxTokens: true,
+            isActive: true,
+            supportsToolUse: null
+        },
+        error: null
     }),
+    SetActiveModelAsync: async (modelId, contextLength) => {
+        console.log('[mock] SetActiveModelAsync called with:', modelId, contextLength);
+        return true;
+    },
     ExecutePromptAsync: async (requestJson) => {
         let i = 0;
         window.__streamingState.isStreaming = true;
@@ -86,7 +109,7 @@ const __mockBridge = {
     },
     GetSettingsAsync: async () => {
         console.log('[mock] GetSettingsAsync called');
-        return JSON.stringify({});
+        return JSON.stringify({ AutoLoadOnStartup: true });
     },
     UpdateSettingsAsync: async (json) => {
         console.log('[mock] UpdateSettingsAsync called');

@@ -4,6 +4,21 @@ export class SettingsDialog {
     constructor() {
         this.onLoad = createCallback();
         this.onSave = createCallback();
+        this.dialog = null;
+        this.toggleBtn = null;
+        this._toggleHandler = null;
+    }
+
+    _attachEvents() {
+        if (this.toggleBtn && this._toggleHandler) {
+            this.toggleBtn.addEventListener('click', this._toggleHandler);
+        }
+    }
+
+    _detachEvents() {
+        if (this.toggleBtn && this._toggleHandler) {
+            this.toggleBtn.removeEventListener('click', this._toggleHandler);
+        }
     }
 
     async show() {
@@ -13,9 +28,11 @@ export class SettingsDialog {
         const body = dialog.querySelector('.modal-body');
         const confirmBtn = dialog.querySelector('#dialog-confirm');
         const cancelBtn = dialog.querySelector('#dialog-cancel');
+        const toggleBtn = dialog.querySelector('.password-toggle');
+        const apiKeyInput = dialog.querySelector('[data-setting="ApiKey"]');
 
-        if (!body || !confirmBtn || !cancelBtn) {
-            throw new Error('Missing .modal-body, #dialog-confirm or #dialog-cancel');
+        if (!body || !confirmBtn || !cancelBtn || !toggleBtn || !apiKeyInput) {
+            throw new Error('Missing .modal-body, #dialog-confirm, #dialog-cancel, #toggle-api-key or #ApiKey');
         }
 
         try {
@@ -42,6 +59,15 @@ export class SettingsDialog {
             console.error('Failed to populate settings dialog', e);
         }
 
+        this.dialog = dialog;
+        this.toggleBtn = toggleBtn;
+        this._toggleHandler = () => {
+            const isPassword = apiKeyInput.type === 'password';
+            apiKeyInput.type = isPassword ? 'text' : 'password';
+            this.toggleBtn.style.color = isPassword ? 'var(--accent-color)' : 'var(--muted-color)';
+        };
+        this._attachEvents();
+
         return new Promise((resolve) => {
             dialog.showModal();
 
@@ -52,7 +78,7 @@ export class SettingsDialog {
                         if (typeof form.reportValidity === 'function') form.reportValidity();
                         const firstInvalid = form.querySelector(':invalid');
                         if (firstInvalid) firstInvalid.focus();
-                        return; 
+                        return;
                     }
 
                     const elems = body.querySelectorAll('[data-setting]');
@@ -74,6 +100,7 @@ export class SettingsDialog {
                     const result = await this.onSave.emitResult(newSettings);
                     this.onLoad.off();
                     this.onSave.off();
+                    this._detachEvents();
                     dialog.close();
                     resolve(result.success);
                 }
@@ -81,6 +108,7 @@ export class SettingsDialog {
                     console.error('Failed to save settings', err);
                     this.onLoad.off();
                     this.onSave.off();
+                    this._detachEvents();
                     dialog.close();
                     resolve(false);
                 }
@@ -89,12 +117,14 @@ export class SettingsDialog {
             const onCancel = () => {
                 this.onLoad.off();
                 this.onSave.off();
+                this._detachEvents();
                 dialog.close();
                 resolve(false);
             };
             const onClose = () => {
                 this.onLoad.off();
                 this.onSave.off();
+                this._detachEvents();
                 resolve(false);
             };
 

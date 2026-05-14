@@ -5,19 +5,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using LMLocal.Common;
-using LMLocal.Infrastructure.Lm;
-using LMLocal.Infrastructure.Lm.Responses;
-using LMLocal.Infrastructure.WebView;
+using LMLocal.Infrastructure.Api;
+using LMLocal.Infrastructure.Api.Responses;
 using LMLocal.Models;
 
 
 namespace LMLocal.Services
 {
+    /// <summary>
+    /// Responsible for compacting (summarizing) conversation history when it exceeds a certain size threshold.
+    /// </summary>
     internal interface IHistoryCompactor
     {
-        void SetMaxContext(int maxContext);
         bool NeedsCompaction();
-        Task CompactIfNeededAsync(ILMStudioClient client, string modelId, CancellationToken cancellationToken);
+        Task CompactIfNeededAsync(string modelId, CancellationToken cancellationToken);
     }
 
     internal class HistoryCompactor : IHistoryCompactor
@@ -26,20 +27,21 @@ namespace LMLocal.Services
         private const double CompactionThresholdRatio = 0.8;
 
         private readonly IChatHistoryManager _history;
-        private readonly Func<WebView2MessageType, Task> _onStatusChanged;
-        private int _maxContext = 16384;
+        private readonly IOpenApiAdapter _openApiAdapter;
         private readonly ISettingsManager _settingsManager;
+        private readonly IActiveModelContext _activeModelContext;
 
-        public HistoryCompactor(IChatHistoryManager history, Func<WebView2MessageType, Task> onStatusChanged = null, ISettingsManager settingsManager = null)
+        public HistoryCompactor(IChatHistoryManager history, IOpenApiAdapter openApiAdapter, ISettingsManager settingsManager, IActiveModelContext activeModelContext)
         {
-            _history = history;
-            _onStatusChanged = onStatusChanged;
-            _settingsManager = settingsManager;
+            _history = history ?? throw new ArgumentNullException(nameof(history));
+            _openApiAdapter = openApiAdapter ?? throw new ArgumentNullException(nameof(openApiAdapter));
+            _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+            _activeModelContext = activeModelContext ?? throw new ArgumentNullException(nameof(activeModelContext));
         }
 
-        public void SetMaxContext(int maxContext)
+        private int GetMaxContext()
         {
-            _maxContext = maxContext > 0 ? maxContext : 16384;
+            return _activeModelContext.MaxContextLength > 0 ? _activeModelContext.MaxContextLength : 16384;
         }
 
         public bool NeedsCompaction()
@@ -48,11 +50,11 @@ namespace LMLocal.Services
             if (!enabled)
                 return false;
 
-            int chars = _history.GetHistoryCopy().Sum(m => m.Content.Length);
-            return (chars / 4) >= (int)(_maxContext * CompactionThresholdRatio);
+            int chars = _history.GetHistoryCopy().Sum(m => m.Content?.ToString()?.Length ?? 0); ;
+            return (chars / 4) >= (int)(GetMaxContext() * CompactionThresholdRatio);
         }
 
-        public async Task CompactIfNeededAsync(ILMStudioClient client, string modelId, CancellationToken cancellationToken)
+        public async Task CompactIfNeededAsync(string modelId, CancellationToken cancellationToken)
         {
             if (!NeedsCompaction())
                 return;
@@ -67,9 +69,6 @@ namespace LMLocal.Services
             if (toSummarize.Count == 0)
                 return;
 
-            if (_onStatusChanged != null)
-                await _onStatusChanged(WebView2MessageType.CompactionStart).ConfigureAwait(false);
-
             try
             {
                 var summaryRequest = new List<ChatMessage>
@@ -81,7 +80,7 @@ namespace LMLocal.Services
                 var modelContext = new ModelContext(modelId: modelId, temperature: 0.3);
                 var messageContext = new MessageContext(summaryRequest);
 
-                SendChatResponse response = await client.SendChatAsync(messageContext, modelContext, cancellationToken).ConfigureAwait(false);
+                SendChatResponse response = await _openApiAdapter.SendChatAsync(messageContext, modelContext, cancellationToken).ConfigureAwait(false);
                 if (response != null)
                 {
                     var parsedSummary = response?.Choices?.FirstOrDefault(x => x != null)?.Message?.Content?.Trim();
@@ -101,10 +100,13 @@ namespace LMLocal.Services
                     }
                 }
             }
-            finally
+            catch (OperationCanceledException)
             {
-                if (_onStatusChanged != null)
-                    await _onStatusChanged(WebView2MessageType.CompactionEnd).ConfigureAwait(false);
+                InternalLogger.Info("History compaction cancelled.");
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Error($"History compaction failed: {ex.Message}", ex);
             }
         }
 
@@ -113,7 +115,8 @@ namespace LMLocal.Services
             var sb = new StringBuilder();
             foreach (var msg in messages)
             {
-                sb.AppendLine($"{msg.Role}: {msg.Content}");
+                string content = msg.Content?.ToString() ?? "[tool call]";
+                sb.AppendLine($"{msg.Role}: {content}");
                 sb.AppendLine();
             }
             return sb.ToString();

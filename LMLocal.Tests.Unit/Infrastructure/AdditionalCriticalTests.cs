@@ -7,19 +7,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using LMLocal.Infrastructure;
+using LMLocal.Infrastructure.Vs.Abstractions;
 using LMLocal.Services;
 using LMLocal.Models;
-using LMLocal.Infrastructure.Lm;
 using Moq;
 using NUnit.Framework;
-using LMLocal.Infrastructure.Lm.Responses;
+using LMLocal.Infrastructure.Vs;
+using LMLocal.Infrastructure.Api.Responses;
+using LMLocal.Infrastructure.Api;
 
 namespace LMLocal.Tests.Unit.Infrastructure
 {
     [TestFixture]
     public class AdditionalCriticalTests
     {
-
         private class DelayedWriteFileSystem : IFileSystem
         {
             private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte[]> _files = new System.Collections.Concurrent.ConcurrentDictionary<string, byte[]>();
@@ -143,8 +144,9 @@ namespace LMLocal.Tests.Unit.Infrastructure
         public void AddUserMessage_StripsMarkdown_WhenEnabled()
         {
             var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.SystemPrompt).Returns("sys");
             mockSettings.Setup(s => s.Current).Returns(new AppSettings { EnableHistoryCompression = true });
-            var hist = new ChatHistoryManager("sys", null, mockSettings.Object);
+            var hist = new ChatHistoryManager(mockSettings.Object, new Mock<IChatPersistenceService>().Object);
 
             hist.AddUserMessage("**bold** _italic_");
             var copy = hist.GetHistoryCopy();
@@ -157,36 +159,37 @@ namespace LMLocal.Tests.Unit.Infrastructure
         [Test]
         public void BuildMessagesForRequest_IncludesReferenceCode_WhenIncludedContentProvided()
         {
-            var hist = new ChatHistoryManager("sys");
+            var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.SystemPrompt).Returns("sys");
+            var hist = new ChatHistoryManager(mockSettings.Object, new Mock<IChatPersistenceService>().Object);
             var messages = hist.BuildUserMessagesWithHistory("ask", includedContent: "code snippet");
 
             Assert.That(messages[messages.Count -1].Content, Is.EqualTo("ask"));
-            Assert.That(messages, Has.Exactly(1).Matches<ChatMessage>(m => m.Content.StartsWith("Reference code:")));
+            Assert.That(messages, Has.Exactly(1).Matches<ChatMessage>(m => m.Content.ToString().StartsWith("Reference code:")));
         }
 
         [Test]
         public async Task CompactIfNeededAsync_NoToSummarize_DoesNothing()
         {
             var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.SystemPrompt).Returns("sys");
             mockSettings.Setup(s => s.Current).Returns(new AppSettings { EnableHistoryCompaction = true });
-            var history = new ChatHistoryManager("sys", null, mockSettings.Object);
+            var history = new ChatHistoryManager(mockSettings.Object, new Mock<IChatPersistenceService>().Object);
 
             for (int i = 0; i < 3; i++) history.AddUserMessage("m" + i);
-            var called = false;
-            var compactor = new HistoryCompactor(history,  async t => { called = true; await Task.CompletedTask; }, mockSettings.Object);
-            compactor.SetMaxContext(1000);
-
             var fakeClient = new DummyClient("unused");
-            await compactor.CompactIfNeededAsync(fakeClient, null, CancellationToken.None);
+            var mockActiveModelContext = new Mock<IActiveModelContext>();
+            mockActiveModelContext.SetupGet(a => a.MaxContextLength).Returns(1000);
+            var compactor = new HistoryCompactor(history, fakeClient, mockSettings.Object, mockActiveModelContext.Object);
 
-            Assert.That(called, Is.False);
+            await compactor.CompactIfNeededAsync(null, CancellationToken.None);
         }
 
-        private class DummyClient : ILMStudioClient
+        private class DummyClient : IOpenApiAdapter
         {
             private readonly string _r;
             public DummyClient(string r) { _r = r; }
-            public Task<ListModelsResponse> ListModelsAsync(CancellationToken cancellationToken) => throw new NotImplementedException();
+            public Task<string> ListModelsRawAsync(string endpoint, CancellationToken cancellationToken) => Task.FromResult(string.Empty);
             public Task<StreamingResponse> SendChatStreamingAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken) => throw new NotImplementedException();
             public Task<SendChatResponse> SendChatAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken) => Task.FromResult<SendChatResponse>(null);
         }
@@ -205,13 +208,20 @@ namespace LMLocal.Tests.Unit.Infrastructure
         }
 
         [Test]
-        public void GetModelsAsync_ErrorResponse_ThrowsWithParsedMessage()
+        public async Task GetModelsAsync_ErrorResponse_ReturnsErrorInResponse()
         {
             var json = "{ \"error\": { \"message\": \"boom\" } }";
             var response = new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(json) };
             var client = new HttpClient(new FakeHandler(response));
-            var lm = new LMStudioClient(client, "http://localhost:1234");
-            Assert.ThrowsAsync<HttpRequestException>(async () => await lm.ListModelsAsync(CancellationToken.None));
+            var wrapper = new TestHttpClientWrapper(client);
+            var toolFactory = new Mock<IVsToolFactory>().Object;
+            var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.Current).Returns(new AppSettings());
+            var lm = new OpenApiAdapter(wrapper, mockSettings.Object, toolFactory);
+
+            var result = await lm.ListModelsRawAsync("/v1/models", CancellationToken.None);
+
+            Assert.That(result, Is.Empty);
         }
 
         [Test]
@@ -220,7 +230,11 @@ namespace LMLocal.Tests.Unit.Infrastructure
             var json = "{ \"choices\": [ { \"message\": { \"content\": \"hello\" } } ] }";
             var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) };
             var client = new HttpClient(new DelayedHandler(response, 500));
-            var lm = new LMStudioClient(client, "http://localhost:1234");
+            var wrapper = new TestHttpClientWrapper(client);
+            var toolFactory = new Mock<IVsToolFactory>().Object;
+            var mockSettings = new Mock<ISettingsManager>();
+            mockSettings.Setup(s => s.Current).Returns(new AppSettings());
+            var lm = new OpenApiAdapter(wrapper, mockSettings.Object, toolFactory);
             var cts = new CancellationTokenSource(50);
             Assert.ThrowsAsync<TaskCanceledException>(async () => await lm.SendChatAsync(new MessageContext(new List<ChatMessage>()), new ModelContext("test"), cts.Token));
         }

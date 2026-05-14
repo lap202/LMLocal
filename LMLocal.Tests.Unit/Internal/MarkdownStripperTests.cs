@@ -1,7 +1,7 @@
 using LMLocal.Common;
 using NUnit.Framework;
 
-namespace LMLocal.Tests.Unit.Internal
+namespace LMLocal.Tests.Unit
 {
     [TestFixture]
     public class MarkdownStripperTests

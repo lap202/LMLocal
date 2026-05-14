@@ -3,9 +3,6 @@
  * Supports __bridgeOverride for tests.
  */
 class BridgeClient {
-    constructor() {
-        // nothing to init
-    }
 
     _getHost() {
         return window.__bridgeOverride ?? window.chrome?.webview?.hostObjects?.bridge;
@@ -23,8 +20,12 @@ class BridgeClient {
         return host[method](...args);
     }
 
-    async getStatusAsync() {
-        return JSON.parse(await this._callHost("GetStatusAsync"));
+    async setActiveModelAsync(modelId, contextLength) {
+        return await this._callHost("SetActiveModelAsync", modelId, contextLength);
+    }
+
+    async listModelsAsync() {
+        return JSON.parse(await this._callHost("ListModelsAsync"));
     }
 
     async executePromptAsync(request) {
@@ -54,7 +55,7 @@ class BridgeClient {
         return await this._callHost("UpdateSettingsAsync", payload);
     }
 
-    async getInstructions() {
+    async getInstructionsAsync() {
         const res = await this._callHost("GetInstructionsAsync");
         return JSON.parse(res);
     }

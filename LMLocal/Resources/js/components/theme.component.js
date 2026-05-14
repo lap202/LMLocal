@@ -40,4 +40,4 @@ class ThemeComponent {
 }
 
 const themeComponent = new ThemeComponent();
-export default themeComponent;
+export { themeComponent };

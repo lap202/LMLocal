@@ -131,10 +131,18 @@ public class ChatTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for AI message to appear and stream to complete
+        await Expect(Page.Locator(".ai-message")).ToHaveCountAsync(1, new() { Timeout = 5000 });
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync();
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
-        await Expect(Page.Locator(".ai-message.completed")).ToHaveCountAsync(1);
+        // Verify AI message exists and response has finished generating
+        var aiMessageCount = await Page.Locator(".ai-message").CountAsync();
+        Assert.That(aiMessageCount, Is.EqualTo(1), "Should have one AI message");
+
+        var responseContainer = Page.Locator(".ai-response-container");
+        var isNotGenerating = await responseContainer.EvaluateAsync<bool>("el => !el.classList.contains('is-generating')");
+        Assert.That(isNotGenerating, Is.True, "Response should have finished generating");
     }
 
     [Test]
@@ -175,7 +183,9 @@ public class ChatTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text")).ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+        // Wait for streaming to complete instead of checking status text
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         await Task.Delay(200);
         Assert.That(await IsActiveAsync(), Is.False, "Plus button should be reset (inactive) after send/stream");

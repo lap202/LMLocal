@@ -1,5 +1,5 @@
-import { MarkdownWorkerClient } from '@app/workers/markdown.worker.client.js';
-import { Md4xWorkerClient } from '@app/workers/md4x.worker.client.js';
+import { MarkedWorkerClient } from '@app/workers/marked/marked.worker.client.js';
+import { Md4xWorkerClient } from '@app/workers/md4x/md4x.worker.client.js';
 /**
  * SimpleParser
  *
@@ -44,7 +44,7 @@ export function createMarkDownParser(type) {
         case ParserType.SIMPLE:
             return new SimpleParser();
         case ParserType.MARKED_WORKER:
-            return new MarkdownWorkerClient();
+            return new MarkedWorkerClient();
         case ParserType.MD4X:
             return new Md4xWorkerClient();
         default:

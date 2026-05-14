@@ -10,12 +10,32 @@ const __mockBridge = {
             if (i !== -1) _listeners.splice(i, 1);
         }
     },
-    GetStatusAsync: async () => JSON.stringify({
-        Status: "SUCCESS",
-        ModelName: "Test Model",
-        MaxContext: 16384,
-        UsedTokens: 0
+    ListModelsAsync: async () => JSON.stringify({
+        models: [
+            {
+                id: "test-model-1",
+                name: "Test Model",
+                maxTokens: 16384,
+                supportsMaxTokens: true,
+                isActive: false,
+                supportsToolUse: null
+            }
+        ],
+        hasActiveModel: true,
+        activeModel: {
+            id: "test-model-instance",
+            name: "Test Model",
+            maxTokens: 16384,
+            supportsMaxTokens: true,
+            isActive: true,
+            supportsToolUse: null
+        },
+        error: null
     }),
+    SetActiveModelAsync: async (modelId, contextLength) => {
+        console.log('[mock] SetActiveModelAsync called with:', modelId, contextLength);
+        return true;
+    },
     ExecutePromptAsync: async (requestJson) => {
         const gfm = `Setext Heading\n===============\n\n1. First item\n   - Nested bullet\n     - Deep nested\n\n> This is a blockquote\n>\n> - nested in blockquote\n\nInline code: ` + '`' + `const x = 1` + '`' + ` and fenced code:\n\n\`\`\`python\nprint('hello')\n\`\`\`\n\nImage: ![Alt text](https://via.placeholder.com/150)\n\nReference link: [GitHub][1]\n\n[1]: https://github.com\n\nAutolink: https://example.org\n\nTable:\n\n| Left | Center | Right |\n| :-- | :-: | --: |\n| L | C | R |\n\n`;
 
@@ -49,7 +69,7 @@ const __mockBridge = {
     },
     GetSettingsAsync: async () => {
         console.log('[mock] GetSettingsAsync called');
-        return JSON.stringify({});
+        return JSON.stringify({ AutoLoadOnStartup: true });
     },
     UpdateSettingsAsync: async (json) => {
         console.log('[mock] UpdateSettingsAsync called');

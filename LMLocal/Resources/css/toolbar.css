@@ -1,0 +1,147 @@
+﻿.context-bar-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4px;
+    height: 18px;
+    padding: 0px 6px 0px 3px;
+    flex: none;
+}
+
+/* ====== Top info bar ====== */
+#top-info-bar {
+    display: flex;
+    align-items: center;
+    height: 35px;
+    padding: 0 12px;
+    background: var(--top-bar-bg);
+    border-bottom: 1px solid var(--border-color);
+    gap: 2px;
+}
+
+.model-info, .connection-info {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--success-color);
+    white-space: nowrap;
+}
+
+    .model-info span.retryable {
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+        .model-info span.retryable:hover {
+            opacity: 0.8;
+        }
+
+#model-name {
+    position: relative;
+    padding-right: 14px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+    #model-name::after {
+        content: '▼';
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 8px;
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+    }
+
+    #model-name.generating::after {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border: 2px solid var(--code-inline-bg);
+        border-top-color: var(--success-color);
+        border-radius: 50%;
+        right: 0;
+        top: calc(50% - 6px);
+        transform: none;
+        animation: spin 1s linear infinite;
+    }
+
+.model-info:hover #model-name {
+    color: var(--accent-color);
+}
+
+    .model-info:hover #model-name::after {
+        opacity: 1;
+    }
+
+/* ====== Token / progress bar ====== */
+.progress-container {
+    width: 4px;
+    height: 100%;
+    background: var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+#token-bar-fill {
+    width: 100%;
+    height: 100%;
+    background: var(--accent-color);
+    transition: height 0.4s ease;
+    box-shadow: 0 0 4px var(--accent-color);
+    transform-origin: bottom;
+    transform: scaleY(0);
+}
+
+/* ====== Connection status  ====== */
+#conn-status.online {
+    color: var(--success-color);
+    cursor: default;
+    text-decoration: none;
+}
+
+#conn-status.offline {
+    color: var(--danger-color);
+    cursor: default;
+    text-decoration: none;
+}
+
+#conn-status.waiting {
+    color: var(--quote-text-color);
+}
+
+#status-separator {
+    color: var(--separator-color);
+    margin: 0 4px;
+}
+
+/* ====== Retry button styles ====== */
+#retry-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 0px 0px 4px;
+    ;
+    font-size: 14px;
+    color: inherit;
+    opacity: 0.7;
+}
+
+    #retry-btn.retry-animate {
+        animation: retrySpin 0.5s ease-in-out;
+    }
+
+@keyframes retrySpin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+

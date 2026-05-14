@@ -1,8 +1,9 @@
-using Microsoft.VisualStudio.Shell;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
-
+using LMLocal.Infrastructure.DependencyInjection;
+using LMLocal.Ipc;
+using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
 namespace LMLocal
@@ -49,8 +50,36 @@ namespace LMLocal
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            // Enable IPC in Debug builds or when explicitly requested by environment variable
+
+            // Initialize dependency injection container early so other components can resolve services.
+            await ServiceConfiguration.InitializeAsync().ConfigureAwait(false);
+
             await ShowMainWindow.InitializeAsync(this);
             await MainWindowCommand.InitializeAsync(this);
+
+#if DEBUG
+            //Should enable IPC in debug builds to allow testing without needing to set environment variable
+
+            var enableIpc = Environment.GetEnvironmentVariable("LMLocal_IPC") == "1";
+            if (enableIpc)
+            {
+                var startupListener = new VsStartupListener(this, DisposalToken);
+                await startupListener.InitializeAsync();
+
+                DisposalToken.Register(() => startupListener?.Dispose());
+                DisposalToken.Register(() => _ = VsIpcServer.StopAsync());
+            }
+#endif
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                ServiceConfiguration.Cleanup();
+            }
+            base.Dispose(disposing);
         }
 
         #endregion

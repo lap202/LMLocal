@@ -13,8 +13,21 @@ public class ClearChatTests : AppTestBase
 
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+
+        // Wait for streaming to complete
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
+
+        // IMPORTANT: Wait for app to return to IDLE state (not just finishing)
+        // The FINISHING state doesn't allow clear-chat to work properly
+        // Wait until button is "Send" (not "Stop") which indicates IDLE
+        await Page.WaitForFunctionAsync("() => document.querySelector('#mainBtn')?.textContent.trim() === 'Send'");
+
+        await Task.Delay(500); // Extra buffer for state transitions
+
+        // Verify messages exist before clearing
+        var messagesBefore = await Page.Locator("#chat-container > *").CountAsync();
+        Assert.That(messagesBefore, Is.GreaterThan(0), "Should have messages before clearing");
 
         await Page.Locator("#menu-btn").ClickAsync();
         await Page.Locator("#dropdown-menu button[data-action=\"clear-chat\"]").ClickAsync();
@@ -23,7 +36,15 @@ public class ClearChatTests : AppTestBase
         await Expect(confirmDialog).ToBeVisibleAsync(new() { Timeout = 3000 });
         await Page.Locator("#confirm-dialog #dialog-confirm").ClickAsync();
 
-        await Expect(Page.Locator("#chat-container > *")).ToHaveCountAsync(0);
+        // Wait for dialog to close
+        await Expect(confirmDialog).ToBeHiddenAsync(new() { Timeout = 3000 });
+
+        // Wait a bit more for DOM to settle after clear
+        await Task.Delay(500);
+
+        // Verify chat container is empty
+        var finalCount = await Page.Locator("#chat-container > *").CountAsync();
+        Assert.That(finalCount, Is.EqualTo(0), "Chat container should be empty after clear");
     }
 
     [Test]
@@ -36,8 +57,10 @@ public class ClearChatTests : AppTestBase
 
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
-        await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("Ready", new() { Timeout = 5000 });
+
+        // Wait for streaming to complete
+        await Expect(Page.Locator(".ai-response-container")).ToBeVisibleAsync(new() { Timeout = 5000 });
+        await Page.WaitForFunctionAsync("() => !document.querySelector('.ai-response-container')?.classList.contains('is-generating')");
 
         await Page.Locator("#menu-btn").ClickAsync();
         await Page.Locator("#dropdown-menu button[data-action=\"clear-chat\"]").ClickAsync();
