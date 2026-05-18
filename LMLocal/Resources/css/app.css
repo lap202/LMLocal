@@ -556,6 +556,15 @@ pre {
 }
 
 /* ====== Status bar status  ====== */
+#status-text.offline {
+    color: var(--quote-text-color);
+}
+
+#status-bar:has(.offline) #status-icon {
+    background-color: var(--quote-text-color);
+    border-color: var(--quote-text-color);
+}
+
 #status-text.error {
     color: var(--danger-color);
     font-weight: bold;
@@ -845,7 +854,7 @@ pre {
         font-size: 10px;
     }
 /* ====== Tool button styles ====== */
-.tool-status, .tool-status-completed {
+.tool-status, .tool-status-error, .tool-status-completed {
     display: inline-flex;
     align-items: center;
     gap: 12px;
@@ -867,6 +876,12 @@ pre {
     .tool-status-completed::before {
         content: "✔";
         color: var(--success-color);
+        font-size: 10px;
+    }
+
+    .tool-status-error::before {
+        content: "✖";
+        color: var(--error-color);
         font-size: 10px;
     }
 

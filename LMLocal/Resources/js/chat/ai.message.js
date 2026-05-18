@@ -120,10 +120,14 @@ export function createAiMessage(container, highlightWorkerClient, streamingPipel
             elements.toolContainer.appendChild(toolDiv);
         },
 
-        finishTooling: (callId, message) => {
+        finishTooling: (callId, withError, message) => {
             const toolDiv = elements.toolContainer.querySelector(`[data-tool-call-id="${callId}"]`);
             if (toolDiv) {
-                toolDiv.className = 'tool-status-completed';
+                if (withError) {
+                    toolDiv.className = 'tool-status-error';
+                } else {
+                    toolDiv.className = 'tool-status-completed';
+                }
                 toolDiv.textContent += (message || 'Tooling stopped.');
             }
         },

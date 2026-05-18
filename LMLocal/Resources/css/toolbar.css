@@ -26,6 +26,10 @@
     white-space: nowrap;
 }
 
+.model-info {
+    display: none;
+}
+
     .model-info span.retryable {
         cursor: pointer;
         text-decoration: underline;
@@ -117,6 +121,7 @@
 #status-separator {
     color: var(--separator-color);
     margin: 0 4px;
+    display: none;
 }
 
 /* ====== Retry button styles ====== */
@@ -144,4 +149,3 @@
         transform: rotate(360deg);
     }
 }
-

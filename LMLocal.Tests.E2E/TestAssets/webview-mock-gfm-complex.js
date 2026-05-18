@@ -17,7 +17,7 @@ const __mockBridge = {
                 name: "Test Model",
                 maxTokens: 16384,
                 supportsMaxTokens: true,
-                isActive: false,
+                isLoaded: false,
                 supportsToolUse: null
             }
         ],
@@ -27,7 +27,7 @@ const __mockBridge = {
             name: "Test Model",
             maxTokens: 16384,
             supportsMaxTokens: true,
-            isActive: true,
+            isLoaded: true,
             supportsToolUse: null
         },
         error: null
@@ -37,7 +37,7 @@ const __mockBridge = {
         return true;
     },
     ExecutePromptAsync: async (requestJson) => {
-        const gfm = `Setext Heading\n===============\n\n1. First item\n   - Nested bullet\n     - Deep nested\n\n> This is a blockquote\n>\n> - nested in blockquote\n\nInline code: ` + '`' + `const x = 1` + '`' + ` and fenced code:\n\n\`\`\`python\nprint('hello')\n\`\`\`\n\nImage: ![Alt text](https://via.placeholder.com/150)\n\nReference link: [GitHub][1]\n\n[1]: https://github.com\n\nAutolink: https://example.org\n\nTable:\n\n| Left | Center | Right |\n| :-- | :-: | --: |\n| L | C | R |\n\n`;
+        const gfm = `Setext Heading\n===============\n\n1. First item\n   - Nested bullet\n     - Deep nested\n\n> This is a blockquote\n>\n> - nested in blockquote\n\nInline code: ` + '`' + `const x = 1` + '`' + ` and fenced code:\n\n\`\`\`python\nprint('hello')\n\`\`\`\n\nImage: ![Alt text](https://via.placeholder.com/150)\n\nDirect link: [GitHub](https://github.com)\n\nAutolink: https://example.org\n\nTable:\n\n| Left | Center | Right |\n| :-- | :-: | --: |\n| L | C | R |\n\n`;
 
         setTimeout(() => {
             _listeners.forEach(fn => fn({

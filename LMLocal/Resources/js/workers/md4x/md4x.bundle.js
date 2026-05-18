@@ -121,7 +121,6 @@ function render(exports, fn, input, ...extra) {
     let outPtr = null;
 
     try {
-
         new Uint8Array(memory.buffer, ptr, encoded.length).set(encoded);
 
         const ret = fn(ptr, encoded.length, ...extra);
@@ -168,19 +167,7 @@ function renderToHtml(input, opts) {
     return render(exports, exports.md4x_to_html_with_parser_flags, input, parserFlags, rendererFlags);
 }
 
-function heal(input) {
-    const exports = _getExports();
-    return render(exports, exports.md4x_heal, input);
-}
-
-function renderToText(input, opts) {
-    const flags = opts?.heal ? MD_HTML_FLAG_HEAL : 0;
-    const exports = _getExports();
-    return render(exports, exports.md4x_to_text, input, flags);
-}
 
 
 self.init = init;
 self.renderToHtml = renderToHtml;
-self.heal = heal;
-self.renderToText = renderToText;

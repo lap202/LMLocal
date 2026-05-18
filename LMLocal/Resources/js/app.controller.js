@@ -73,6 +73,7 @@ class AppController {
             statusComponent.update(appState, prevAppState);
             inputComponent.update(appState, prevAppState);
             chatController.update(appState, prevAppState);
+            toolbarComponent.update(appState, prevAppState);
         };
         appStore.subscribe(this._storeListener);
 
@@ -130,6 +131,9 @@ class AppController {
                     settingsDialog.onLoad.on(async () => {
                         return await appManager.getSettings();
                     });
+                    settingsDialog.onTestConnection.on(async (settings) => {
+                        return await appDataService.testConnection(settings);
+                    });
                     settingsDialog.onSave.on(async (settings) => {
                         return await appManager.updateSettings(settings);
                     });
@@ -153,9 +157,9 @@ class AppController {
         toolbarComponent.onModelNameClick.on(async () => {
             const response = await appDataService.loadModels();
             if (response && response.models && response.models.length > 0) {
-                const dialog = new ModelSelectorDialog(response.models);
+                const dialog = new ModelSelectorDialog(response.models, response.activeModel);
 
-                dialog.onLoad.on(async () => {
+                dialog.onRefresh.on(async () => {
                     return await appDataService.loadModels();
                 });
 

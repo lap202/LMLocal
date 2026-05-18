@@ -68,35 +68,37 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Infrastructure\LlmApi\Provider\ApiEndpoints.cs" />
+    <Compile Include="Infrastructure\LlmApi\Provider\ProviderResolver.cs" />
+    <Compile Include="Infrastructure\LlmApi\Responses\JanModelsResponse.cs" />
     <Compile Include="Infrastructure\DependencyInjection\ServiceConfiguration.cs" />
-    <Compile Include="Infrastructure\Api\HttpClientWrapper.cs" />
-    <Compile Include="Infrastructure\Api\Provider\ModelProvider.cs" />
-    <Compile Include="Infrastructure\Api\Converter\ModelResponseConverter.cs" />
-    <Compile Include="Infrastructure\Api\Provider\ProviderResolver.cs" />
-    <Compile Include="Infrastructure\Api\Responses\ListModelsResponse.cs" />
-    <Compile Include="Infrastructure\Api\Responses\LmStudioModelsResponse.cs" />
-    <Compile Include="Infrastructure\Api\Responses\OllamaPsResponse.cs" />
-    <Compile Include="Infrastructure\Api\Responses\UnifiedListModelsResponse.cs" />
-    <Compile Include="Infrastructure\Api\Converter\ToolDefinitionConverter.cs" />
-    <Compile Include="Infrastructure\Vs\Abstractions\IVsTool.cs" />
-    <Compile Include="Infrastructure\Vs\Common\SolutionFileProvider.cs" />
-    <Compile Include="Infrastructure\Vs\Common\PathResolver.cs" />
-    <Compile Include="Infrastructure\Vs\Common\SolutionInspector.cs" />
-    <Compile Include="Infrastructure\Vs\Common\VsSolutionFilesScanner.cs" />
-    <Compile Include="Infrastructure\Vs\Common\VsDependencies.cs" />
-    <Compile Include="Infrastructure\Vs\Common\VsUiThreadGuard.cs" />
-    <Compile Include="Infrastructure\Vs\Implementations\ActiveDocumentTool.cs" />
-    <Compile Include="Infrastructure\Vs\Implementations\FileLinesReaderTool.cs" />
-    <Compile Include="Infrastructure\Vs\Implementations\FindFilesByNameTool.cs" />
-    <Compile Include="Infrastructure\Vs\Implementations\GetSolutionOverviewTool.cs" />
-    <Compile Include="Infrastructure\Vs\Implementations\SolutionSearchTool.cs" />
-    <Compile Include="Infrastructure\Vs\ToolDefinition.cs" />
-    <Compile Include="Infrastructure\Vs\VsToolFactory.cs" />
-    <Compile Include="Infrastructure\Api\ModelContext.cs" />
-    <Compile Include="Infrastructure\Api\MessageContext.cs" />
-    <Compile Include="Infrastructure\Api\Responses\SendChatResponse.cs" />
-    <Compile Include="Infrastructure\Api\Requests\SendChatRequest.cs" />
-    <Compile Include="Infrastructure\Api\Responses\StreamingResponse.cs" />
+    <Compile Include="Infrastructure\LlmApi\HttpClientWrapper.cs" />
+    <Compile Include="Infrastructure\LlmApi\Provider\ModelProvider.cs" />
+    <Compile Include="Infrastructure\LlmApi\Converter\ModelResponseConverter.cs" />
+    <Compile Include="Infrastructure\LlmApi\Responses\ListModelsResponse.cs" />
+    <Compile Include="Infrastructure\LlmApi\Responses\LmStudioModelsResponse.cs" />
+    <Compile Include="Infrastructure\LlmApi\Responses\OllamaPsResponse.cs" />
+    <Compile Include="Infrastructure\LlmApi\Responses\UnifiedListModelsResponse.cs" />
+    <Compile Include="Infrastructure\LlmApi\Converter\ToolDefinitionConverter.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Abstractions\IVsTool.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Common\SolutionFileProvider.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Common\PathResolver.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Common\SolutionInspector.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Common\VsSolutionFilesScanner.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Common\VsDependencies.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Common\VsUiThreadGuard.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Implementations\ActiveDocumentTool.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Implementations\FileLinesReaderTool.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Implementations\FindFilesByNameTool.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Implementations\GetSolutionOverviewTool.cs" />
+    <Compile Include="Infrastructure\VsIntegration\Implementations\SolutionSearchTool.cs" />
+    <Compile Include="Infrastructure\VsIntegration\ToolDefinition.cs" />
+    <Compile Include="Infrastructure\VsIntegration\VsToolFactory.cs" />
+    <Compile Include="Infrastructure\LlmApi\ModelContext.cs" />
+    <Compile Include="Infrastructure\LlmApi\MessageContext.cs" />
+    <Compile Include="Infrastructure\LlmApi\Responses\SendChatResponse.cs" />
+    <Compile Include="Infrastructure\LlmApi\Requests\SendChatRequest.cs" />
+    <Compile Include="Infrastructure\LlmApi\Responses\StreamingResponse.cs" />
     <Content Include="Resources\css\dialog.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
@@ -121,52 +123,53 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Compile Include="Infrastructure\WebView\Models\TestConnectionRequest.cs" />
     <Compile Include="Infrastructure\WebView\Models\WebView2MessageType.cs" />
     <Compile Include="Infrastructure\WebView\Models\WebView2ScriptMessage.cs" />
     <Compile Include="Infrastructure\WebView\Models\WebView2ScriptMessageWithCount.cs" />
     <Compile Include="Infrastructure\WebView\Models\WebView2SessionCompleteMessage.cs" />
     <Compile Include="Infrastructure\WebView\Models\WebView2ToolCallMessage.cs" />
     <Compile Include="Infrastructure\WebView\WebViewBridgeFactory.cs" />
-    <Compile Include="Ipc\IpcCommandHandler.cs" />
-    <Compile Include="Ipc\VsIpcServer.cs" />
-    <Compile Include="Ipc\VsStartupListener.cs" />
-    <Compile Include="Models\ToolResultMessage.cs" />
+    <Compile Include="Infrastructure\Ipc\IpcCommandHandler.cs" />
+    <Compile Include="Infrastructure\Ipc\VsIpcServer.cs" />
+    <Compile Include="Infrastructure\Ipc\VsStartupListener.cs" />
+    <Compile Include="Core\Models\ToolResultMessage.cs" />
     <Content Include="Resources\js\store\app.status.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Compile Include="Services\ChatPersistenceService.cs" />
+    <Compile Include="Application\Chat\ChatPersistenceService.cs" />
     <Compile Include="Infrastructure\Persistence\DefaultFileSystem.cs" />
-    <Compile Include="Services\ChatSession\ChatSessionOrchestrator.cs" />
-    <Compile Include="Services\ChatSession\ChatSessionOrchestratorFactory.cs" />
-    <Compile Include="Services\ChatSession\ChatSessionState.cs" />
-    <Compile Include="Services\ChatSession\SessionManager.cs" />
-    <Compile Include="Services\ChatSession\SessionStateContext.cs" />
-    <Compile Include="Services\InstructionsManager.cs" />
-    <Compile Include="Common\JsonExtensions.cs" />
-    <Compile Include="Services\ModelsListService.cs" />
-    <Compile Include="Services\Settings\AppSettings.cs" />
-    <Compile Include="Services\Settings\AppTheme.cs" />
-    <Compile Include="Services\Settings\SettingsManager.cs" />
-    <Compile Include="Models\ActiveModelContext.cs" />
-    <Compile Include="Services\ChatSeassionStream\ChatStreamService.cs" />
-    <Compile Include="Services\ChatHistoryManager.cs" />
-    <Compile Include="Models\ChatMessage.cs" />
+    <Compile Include="Application\ChatSession\ChatSessionOrchestrator.cs" />
+    <Compile Include="Application\ChatSession\ChatSessionOrchestratorFactory.cs" />
+    <Compile Include="Application\ChatSession\ChatSessionState.cs" />
+    <Compile Include="Application\ChatSession\SessionManager.cs" />
+    <Compile Include="Application\ChatSession\SessionStateContext.cs" />
+    <Compile Include="Application\Instructions\InstructionsManager.cs" />
+    <Compile Include="Core\Common\JsonExtensions.cs" />
+    <Compile Include="Application\Models\ModelsListService.cs" />
+    <Compile Include="Application\Settings\AppSettings.cs" />
+    <Compile Include="Application\Settings\AppTheme.cs" />
+    <Compile Include="Application\Settings\SettingsManager.cs" />
+    <Compile Include="Core\Models\ActiveModelContext.cs" />
+    <Compile Include="Application\ChatSessionStream\ChatStreamService.cs" />
+    <Compile Include="Application\Chat\ChatHistoryManager.cs" />
+    <Compile Include="Core\Models\ChatMessage.cs" />
     <Compile Include="Infrastructure\WebView\Models\ExecutePromptRequest.cs" />
-    <Compile Include="Models\GenerateStreamContext.cs" />
-    <Compile Include="Models\StreamChunk.cs" />
-    <Compile Include="Services\HistoryCompactor.cs" />
-    <Compile Include="Common\InternalLogger.cs" />
-    <Compile Include="Services\ChatSeassionStream\LlmSseParser.cs" />
-    <Compile Include="Infrastructure\Api\OpenApiAdapter.cs" />
-    <Compile Include="Common\MarkdownStripper.cs" />
-    <Compile Include="Models\StreamCompletionResult.cs" />
-    <Compile Include="Services\ChatSeassionStream\StreamInactivityWatcher.cs" />
-    <Compile Include="Services\ChatSeassionStream\StreamProcessor.cs" />
+    <Compile Include="Core\Models\GenerateStreamContext.cs" />
+    <Compile Include="Core\Models\StreamChunk.cs" />
+    <Compile Include="Application\Chat\HistoryCompactor.cs" />
+    <Compile Include="Core\Common\InternalLogger.cs" />
+    <Compile Include="Application\ChatSessionStream\LlmSseParser.cs" />
+    <Compile Include="Infrastructure\LlmApi\OpenApiAdapter.cs" />
+    <Compile Include="Core\Common\MarkdownStripper.cs" />
+    <Compile Include="Core\Models\StreamCompletionResult.cs" />
+    <Compile Include="Application\ChatSessionStream\StreamInactivityWatcher.cs" />
+    <Compile Include="Application\ChatSessionStream\StreamProcessor.cs" />
     <Compile Include="Infrastructure\Time\SystemTimeProvider.cs" />
-    <Compile Include="Models\TokenGenerationStats.cs" />
-    <Compile Include="Services\ChatSeassionStream\StreamProcessorFactory.cs" />
-    <Compile Include="Services\ChatSeassionStream\TokenSpeedCalculator.cs" />
+    <Compile Include="Core\Models\TokenGenerationStats.cs" />
+    <Compile Include="Application\ChatSessionStream\StreamProcessorFactory.cs" />
+    <Compile Include="Application\ChatSessionStream\TokenSpeedCalculator.cs" />
     <Compile Include="Infrastructure\WebView\WebViewScriptExecutor.cs" />
     <Compile Include="Infrastructure\WebView\WebViewBridge.cs" />
     <Compile Include="MainWindow.cs" />
@@ -336,8 +339,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Compile Include="Services\Tool\ToolExecutionManager.cs" />
-    <Compile Include="Services\Tool\ToolExecutionResult.cs" />
+    <Compile Include="Application\Tool\ToolExecutionManager.cs" />
+    <Compile Include="Application\Tool\ToolExecutionResult.cs" />
     <Compile Include="ShowMainWindow.cs" />
     <Content Include="Resources\js\workers\marked\marked.worker.client.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -438,7 +441,9 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Resources\json\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="'$(VSToolsPath)' != ''" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

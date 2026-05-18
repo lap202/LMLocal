@@ -53,8 +53,10 @@ public class ConnectionStateTests : AppTestBase
     public async Task StatusText_ShowsErrorMessageWhenOffline()
     {
         await GotoWithMockAsync("webview-mock-offline.js");
+        // The status text may include a prefix (e.g. "Not ready | ") so assert it contains
+        // the expected error message rather than matching the whole string exactly.
         await Expect(Page.Locator("#status-text"))
-            .ToHaveTextAsync("LM Studio unreachable", new() { Timeout = 3000 });
+            .ToContainTextAsync("LM Studio unreachable", new() { Timeout = 3000 });
     }
 
     [Test]

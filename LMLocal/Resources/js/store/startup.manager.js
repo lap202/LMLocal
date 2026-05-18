@@ -15,11 +15,6 @@ class StartupManager {
 
     async initialize() {
         try {
-            appStore.setState({
-                status: AppStatus.CONNECTING,
-                error: "",
-                tokenSpeed: 0
-            });
 
             const response = await appDataService.loadModels();
 
@@ -39,7 +34,7 @@ class StartupManager {
             }
 
             // Priority 2: Find first active model in the list and activate it
-            const firstActiveModel = response.models.find(m => m.isActive);
+            const firstActiveModel = response.models.find(m => m.isLoaded);
             if (firstActiveModel) {
                 await appDataService.setActiveModel(firstActiveModel.id, firstActiveModel.name, firstActiveModel.supportsMaxTokens, firstActiveModel.maxTokens || 0);
                 return;
@@ -77,7 +72,7 @@ class StartupManager {
     async _showModelSelectorDialog(models) {
         const dialog = new ModelSelectorDialog(models);
 
-        dialog.onLoad.on(async () => {
+        dialog.onRefresh.on(async () => {
             return await appDataService.loadModels();
         });
 

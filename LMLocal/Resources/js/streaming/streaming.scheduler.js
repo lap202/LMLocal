@@ -14,7 +14,7 @@ export function createStreamingScheduler(streamBuffer, options = {}) {
     let isProcessing = false;
     let currentTaskFn = null;
     let lastDuration = baseIntervalMs;
-    let pendingPromise = Promise.resolve();  
+    let pendingPromise = Promise.resolve();
 
     const getRemainingWords = () => streamBuffer.getRemainingWordsCount();
 
@@ -125,6 +125,31 @@ export function createStreamingScheduler(streamBuffer, options = {}) {
         return pendingPromise;
     };
 
+    const flushChunked = async (minDelayMs = 0) => {
+
+        if (!currentTaskFn) return;
+
+        if (timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
+
+        isRunning = false;
+
+        await pendingPromise;
+
+        while (getRemainingWords() > 0) {
+            const textToRender = streamBuffer.readNext();
+            if (textToRender) {
+                await callRenderer(textToRender);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, minDelayMs));
+        }
+
+        return flush();
+    };
+
     const reset = () => {
         stop();
         streamBuffer.reset();
@@ -133,5 +158,5 @@ export function createStreamingScheduler(streamBuffer, options = {}) {
         pendingPromise = Promise.resolve();
     };
 
-    return { start, stop, notify, flush, reset };
+    return { start, stop, notify, flush, flushChunked, reset };
 }

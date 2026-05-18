@@ -189,7 +189,7 @@ namespace LMLocal.Tests.Unit.Infrastructure
         {
             private readonly string _r;
             public DummyClient(string r) { _r = r; }
-            public Task<string> ListModelsRawAsync(string endpoint, CancellationToken cancellationToken) => Task.FromResult(string.Empty);
+            public Task<string> ListModelsRawAsync(string endpoint, string baseUrl, string apiKey, CancellationToken cancellationToken) => Task.FromResult(string.Empty);
             public Task<StreamingResponse> SendChatStreamingAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken) => throw new NotImplementedException();
             public Task<SendChatResponse> SendChatAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken) => Task.FromResult<SendChatResponse>(null);
         }
@@ -219,7 +219,7 @@ namespace LMLocal.Tests.Unit.Infrastructure
             mockSettings.Setup(s => s.Current).Returns(new AppSettings());
             var lm = new OpenApiAdapter(wrapper, mockSettings.Object, toolFactory);
 
-            var result = await lm.ListModelsRawAsync("/v1/models", CancellationToken.None);
+            var result = await lm.ListModelsRawAsync("/v1/models", null, null, CancellationToken.None);
 
             Assert.That(result, Is.Empty);
         }

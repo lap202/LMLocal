@@ -141,6 +141,7 @@ class ChatController {
 
             case AppStatus.THINKING:
                 this.currentAi?.updateThought(state.accumulatedThoughtText);
+                this.scrollManager.scrollToBottom();
                 break;
 
             case AppStatus.STREAMING:
@@ -149,7 +150,7 @@ class ChatController {
                 break;
 
             case AppStatus.FINISHING: {
-                
+
                 if (this.currentAi) {
                     this.currentAi.stopThoughts();
                     this.currentAi.finishStreaming().then(async () => {
@@ -164,7 +165,8 @@ class ChatController {
                 break;
 
             case AppStatus.RESPONDING:
-                this.currentAi.finishTooling(state.toolCallId, state.toolMessage);
+                this.currentAi.finishTooling(state.toolCallId, state.toolWithError, state.toolMessage);
+                this.scrollManager.scrollToBottom();
                 break;
 
             case AppStatus.ERROR:

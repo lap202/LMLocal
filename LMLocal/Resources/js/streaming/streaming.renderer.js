@@ -115,7 +115,7 @@ class ProgressiveBlockRenderer {
             }
         }
 
-        this.activeTailDiv.replaceChildren(); 
+        this.activeTailDiv.replaceChildren();
         this.activeTailDiv.remove();
         this.activeTailDiv = null;
         this.onUpdate = null;
@@ -135,7 +135,7 @@ class ProgressiveBlockRenderer {
         if (this.container) this._runRender(text, html);
     }
 
-        stop() {
+    stop() {
         this._flush();
         this.container = null;
         this.activeTailDiv = null;

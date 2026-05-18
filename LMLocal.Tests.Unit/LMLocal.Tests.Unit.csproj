@@ -80,6 +80,7 @@
     <Compile Include="Infrastructure\InstructionsManagerTests.cs" />
     <Compile Include="Infrastructure\LMStudioClientTests.cs" />
     <Compile Include="Infrastructure\ModelResponseConverterTests.cs" />
+    <Compile Include="Infrastructure\OpenApiAdapterHighPriorityTests.cs" />
     <Compile Include="Infrastructure\PathHelperTests.cs" />
     <Compile Include="Infrastructure\PathResolverTests.cs" />
     <Compile Include="Infrastructure\ProviderResolverTests.cs" />

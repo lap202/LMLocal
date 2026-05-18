@@ -12,7 +12,7 @@ import { createCallback } from '@app/lib/callback.js';
 class InputComponent {
     constructor() {
         this.elements = {};
-        this.isProcessing = false;
+
         this.onClick = createCallback();
         this.onEnter = createCallback();
     }
@@ -131,9 +131,11 @@ class InputComponent {
         }
 
         const isBusy = appSelectors.isBusy(state.status);
-        const isStopping = state.status === AppStatus.STOPPING || state.status === AppStatus.OFFLINE;
+        const canSend = appSelectors.canSend(state.status);
+        const isStopping = state.status === AppStatus.STOPPING;
 
-        this.elements.userInput.disabled = isBusy;
+        this.elements.userInput.disabled = !canSend;
+        this.elements.contextToggleBtn.disabled = !canSend;
         this.elements.mainBtn.disabled = isStopping;
 
         const buttonText = isBusy

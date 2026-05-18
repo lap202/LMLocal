@@ -80,7 +80,7 @@ export function createStreamingPipeline(streamBuffer, renderer, parser, schedule
         end() {
             if (!isRunning) return false;
             isEnded = true;
-            let flushPromise = scheduler.flush();
+            let flushPromise = scheduler.flushChunked(0);
             stopScheduler();
             flushPromise.then(() => onEndCallback?.());
             return true;

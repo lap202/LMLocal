@@ -30,6 +30,7 @@ export const UIText = Object.freeze({
     STATUS_THINKING: 'Reasoning...',
     STATUS_UNKNOWN: 'Wait...',
     TEXT_GENERATION_STOPPED: 'Generation stopped.',
+    TEXT_NOT_READY: 'Not ready',
     TEXT_TOKENS: 'tokens',
     TEXT_TOKENS_PER_SECOND: 't/s',
 });
@@ -47,7 +48,7 @@ export const Config = {
     USER_MESSAGE_COLLAPSE_LINES_LIMIT: 8,
     MAX_TOKENS: 16384,
     COPY_STATUS_RESET_MS: 2000,
-    SCROLL_THRESHOLD_PX: 50,
+    SCROLL_THRESHOLD_PX: 150,
     STREAM_INACTIVITY_TIMEOUT_MS: 30000
 };
 

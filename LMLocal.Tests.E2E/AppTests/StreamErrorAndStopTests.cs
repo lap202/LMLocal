@@ -14,8 +14,10 @@ public class StreamErrorAndStopTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToContainTextAsync("model crashed", new() { Timeout = 5000 });
+        // Errors are now displayed in the chat as part of the AI message (generation-stopped)
+        // and the status bar shows the generic "Error" label. Assert both behaviors.
+        await Expect(Page.Locator("#status-text")).ToContainTextAsync("Error", new() { Timeout = 5000 });
+        await Expect(Page.Locator(".ai-message .generation-stopped")).ToContainTextAsync("model crashed", new() { Timeout = 5000 });
     }
 
     [Test]
@@ -28,9 +30,8 @@ public class StreamErrorAndStopTests : AppTestBase
 
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
-
-        await Expect(Page.Locator("#status-text"))
-            .ToContainTextAsync("model crashed", new() { Timeout = 5000 });
+        // Wait for the error to appear in the chat
+        await Expect(Page.Locator(".ai-message .generation-stopped")).ToContainTextAsync("model crashed", new() { Timeout = 5000 });
 
         var aiCountAfterError = await Page.Locator(".ai-message").CountAsync();
         if (aiCountAfterError > 0)
@@ -51,8 +52,8 @@ public class StreamErrorAndStopTests : AppTestBase
         await Page.Locator("#userInput").FillAsync("Hello");
         await Page.Locator("#mainBtn").ClickAsync();
 
-        await Expect(Page.Locator("#status-text"))
-            .ToContainTextAsync("model crashed", new() { Timeout = 5000 });
+        // Wait for the chat to show the error message
+        await Expect(Page.Locator(".ai-message .generation-stopped")).ToContainTextAsync("model crashed", new() { Timeout = 5000 });
 
         await Expect(Page.Locator("#mainBtn")).ToHaveTextAsync("Send");
         await Expect(Page.Locator("#userInput")).ToBeEnabledAsync();

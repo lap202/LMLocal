@@ -96,7 +96,7 @@ namespace LMLocal.Tests.Unit
             private readonly Stream _stream;
             public FakeClient(Stream s) => _stream = s;
 
-            public Task<string> ListModelsRawAsync(string endpoint, CancellationToken cancellationToken)
+            public Task<string> ListModelsRawAsync(string endpoint, string baseUrl, string apiKey, CancellationToken cancellationToken)
                 => Task.FromResult(string.Empty);
 
             public Task<StreamingResponse> SendChatStreamingAsync(MessageContext messageContext, ModelContext modelContext, CancellationToken cancellationToken)

@@ -1,36 +1,32 @@
-using NUnit.Framework;
+using System;
 using LMLocal.Infrastructure.Api;
+using NUnit.Framework;
 
 namespace LMLocal.Tests.Unit.Infrastructure
 {
     [TestFixture]
     public class ProviderResolverTests
     {
-        [Test]
-        public void ResolveProvider_ReturnsLmStudio_ForPort1234()
+        [TestCase("http://localhost:1234", "LmStudio")]
+        [TestCase("http://example.com:8080", "LmStudio")]
+        [TestCase("not a url", "LmStudio")]
+        [TestCase(null, "LmStudio")]
+        public void ResolveProvider_ReturnsExpected_ForVariousInputs(string input, string expectedName)
         {
-            var p = ProviderResolver.ResolveProvider("http://localhost:1234");
-            Assert.That(p, Is.EqualTo(ModelProvider.LmStudio));
+            var p = ProviderResolver.ResolveProvider(input);
+            Enum.TryParse<ModelProvider>(expectedName, out var expected);
+            Assert.That(p, Is.EqualTo(expected));
         }
 
-        [Test]
-        public void ResolveProvider_ReturnsOllama_ForPort11434()
+        [TestCase("lmstudio", "LmStudio")]
+        [TestCase("ollama", "Ollama")]
+        [TestCase("openai", "OpenAi")]
+        [TestCase("jan", "Jan")]
+        public void ResolveProvider_ReturnsExpected_ForProviderNames(string providerName, string expectedName)
         {
-            var p = ProviderResolver.ResolveProvider("http://localhost:11434");
-            Assert.That(p, Is.EqualTo(ModelProvider.Ollama));
-        }
-
-        [Test]
-        public void ResolveProvider_ReturnsOpenAi_ForOtherOrInvalid()
-        {
-            var p1 = ProviderResolver.ResolveProvider("http://example.com:8080");
-            Assert.That(p1, Is.EqualTo(ModelProvider.OpenAi));
-
-            var p2 = ProviderResolver.ResolveProvider("not a url");
-            Assert.That(p2, Is.EqualTo(ModelProvider.OpenAi));
-
-            var p3 = ProviderResolver.ResolveProvider(null);
-            Assert.That(p3, Is.EqualTo(ModelProvider.OpenAi));
+            var p = ProviderResolver.ResolveProvider(providerName);
+            Enum.TryParse<ModelProvider>(expectedName, out var expected);
+            Assert.That(p, Is.EqualTo(expected));
         }
     }
 }

@@ -19,55 +19,65 @@ namespace LMLocal.Tests.Unit
     public class WebViewBridgeTests
     {
         [Test]
-        public async Task ListModelsAsync_SetsActiveModelAndReturnsJson()
-        {
-            var mockSettings = new Mock<ISettingsManager>();
-            mockSettings.SetupGet(s => s.RequestTimeoutSeconds).Returns(1);
+            public async Task ListModelsAsync_SetsActiveModelAndReturnsJson()
+            {
+                var mockSettings = new Mock<ISettingsManager>();
+                mockSettings.SetupGet(s => s.RequestTimeoutSeconds).Returns(1);
 
-            var unified = new UnifiedListModelsResponse();
-            unified.Models.Add(new UnifiedModelInfo { Id = "model1", Name = "Model One" });
+                var unified = new UnifiedListModelsResponse();
+                unified.Models.Add(new UnifiedModelInfo { Id = "model1", Name = "Model One" });
 
-            var mockModelsListService = new Mock<IModelsListService>();
-            mockModelsListService.Setup(o => o.ListModelsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(unified);
+                var mockModelsListService = new Mock<IModelsListService>();
+                mockModelsListService.Setup(o => o.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Returns((string id, CancellationToken ct) =>
+                    {
+                        if (id == "model1")
+                        {
+                            unified.HasActiveModel = true;
+                            unified.ActiveModel = unified.Models[0];
+                            unified.Models[0].IsLoaded = true;
+                        }
+                        return Task.FromResult(unified);
+                    });
 
-            var mockScript = new Mock<IWebViewScriptExecutor>();
-            var mockActiveDoc = new Mock<IActiveDocumentTool>();
-            var mockSession = new Mock<ISessionManager>();
-            var mockActiveModelContext = new Mock<IActiveModelContext>();
-            mockActiveModelContext.SetupGet(a => a.CurrentModelId).Returns("model1");
-            var mockHistoryManager = new Mock<IChatHistoryManager>();
+                var mockScript = new Mock<IWebViewScriptExecutor>();
+                var mockActiveDoc = new Mock<IActiveDocumentTool>();
+                var mockSession = new Mock<ISessionManager>();
+                var mockActiveModelContext = new Mock<IActiveModelContext>();
+                mockActiveModelContext.SetupGet(a => a.CurrentModelId).Returns("model1");
+                var mockHistoryManager = new Mock<IChatHistoryManager>();
 
-            var bridge = new WebViewBridge(mockSettings.Object, mockModelsListService.Object, mockScript.Object, mockActiveDoc.Object, mockSession.Object, mockActiveModelContext.Object, mockHistoryManager.Object);
+                var bridge = new WebViewBridge(mockSettings.Object, mockModelsListService.Object, mockScript.Object, mockActiveDoc.Object, mockSession.Object, mockActiveModelContext.Object, mockHistoryManager.Object);
 
-            var json = await bridge.ListModelsAsync().ConfigureAwait(false);
+                var json = await bridge.ListModelsAsync().ConfigureAwait(false);
 
-            Assert.That(json, Is.Not.Null.And.Not.Empty);
+                Assert.That(json, Is.Not.Null.And.Not.Empty);
 
-            var parsed = JsonConvert.DeserializeObject<UnifiedListModelsResponse>(json);
-            Assert.That(parsed, Is.Not.Null);
-            Assert.That(parsed.HasActiveModel, Is.True);
-            Assert.That(parsed.ActiveModel, Is.Not.Null);
-            Assert.That(parsed.ActiveModel.Id, Is.EqualTo("model1"));
-        }
+                var parsed = JsonConvert.DeserializeObject<UnifiedListModelsResponse>(json);
+                Assert.That(parsed, Is.Not.Null);
+                Assert.That(parsed.HasActiveModel, Is.True);
+                Assert.That(parsed.ActiveModel, Is.Not.Null);
+                Assert.That(parsed.ActiveModel.Id, Is.EqualTo("model1"));
+            }
 
-        [Test]
-        public async Task ListModelsAsync_WhenAdapterThrows_ReturnsErrorJson()
-        {
-            var mockSettings = new Mock<ISettingsManager>();
-            mockSettings.SetupGet(s => s.RequestTimeoutSeconds).Returns(1);
+            [Test]
+            public async Task ListModelsAsync_WhenAdapterThrows_ReturnsErrorJson()
+            {
+                var mockSettings = new Mock<ISettingsManager>();
+                mockSettings.SetupGet(s => s.RequestTimeoutSeconds).Returns(1);
 
-            var mockModelsListService = new Mock<IModelsListService>();
-            mockModelsListService.Setup(o => o.ListModelsAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("boom"));
+                var mockModelsListService = new Mock<IModelsListService>();
+                mockModelsListService.Setup(o => o.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("boom"));
 
-            var mockHistoryManager = new Mock<IChatHistoryManager>();
-            var bridge = new WebViewBridge(mockSettings.Object, mockModelsListService.Object, new Mock<IWebViewScriptExecutor>().Object, new Mock<IActiveDocumentTool>().Object, new Mock<ISessionManager>().Object, new Mock<IActiveModelContext>().Object, mockHistoryManager.Object);
+                var mockHistoryManager = new Mock<IChatHistoryManager>();
+                var bridge = new WebViewBridge(mockSettings.Object, mockModelsListService.Object, new Mock<IWebViewScriptExecutor>().Object, new Mock<IActiveDocumentTool>().Object, new Mock<ISessionManager>().Object, new Mock<IActiveModelContext>().Object, mockHistoryManager.Object);
 
-            var json = await bridge.ListModelsAsync().ConfigureAwait(false);
+                var json = await bridge.ListModelsAsync().ConfigureAwait(false);
 
-            Assert.That(json, Does.Contain("Failed to list models"));
-        }
+                Assert.That(json, Does.Contain("Failed to list models"));
+            }
 
-        [Test]
+            [Test]
         public async Task ExecutePromptAsync_InvalidOrEmptyRequest_DoesNotStartSession()
         {
             var mockSettings = new Mock<ISettingsManager>();

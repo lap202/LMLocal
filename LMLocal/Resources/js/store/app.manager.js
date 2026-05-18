@@ -45,6 +45,7 @@ class AppManager {
     }
 
     async reloadActiveModel() {
+        appStore.setState({ status: AppStatus.CONNECTING, accumulatedText: "", accumulatedThoughtText: "", error: null });
         await startupManager.initialize();
     }
 

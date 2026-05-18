@@ -18,7 +18,7 @@ const __mockBridge = {
                 name: "Test Model",
                 maxTokens: 16384,
                 supportsMaxTokens: true,
-                isActive: false,
+                isLoaded: false,
                 supportsToolUse: null
             }
         ],
@@ -28,7 +28,7 @@ const __mockBridge = {
             name: "Test Model",
             maxTokens: 16384,
             supportsMaxTokens: true,
-            isActive: true,
+            isLoaded: true,
             supportsToolUse: null
         },
         error: null

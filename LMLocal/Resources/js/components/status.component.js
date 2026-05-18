@@ -40,6 +40,7 @@ class StatusComponent {
         let connText = '', connClass = '';
 
         switch (status) {
+            case AppStatus.INITIALIZING:
             case AppStatus.CONNECTING:
                 connText = UIText.STATUS_CONNECTING;
                 connClass = 'status-label waiting';
@@ -122,20 +123,26 @@ class StatusComponent {
 
         const status = appState.status;
         this.elements.statusText.classList.remove('error');
-
+        this.elements.statusText.classList.remove('offline');
         switch (status) {
             case AppStatus.ERROR:
-                this.elements.statusText.textContent = appState.error || UIText.STATUS_ERROR;
+                this.elements.statusText.textContent = UIText.STATUS_ERROR;
                 this.elements.statusText.classList.add('error');
                 break;
             case AppStatus.OFFLINE:
-                if (appState.error) {
-                    this.elements.statusText.textContent = appState.error;
-                    this.elements.statusText.classList.add('error');
-                } else {
-                    this.elements.statusText.textContent = '';
+                {
+                    const label = UIText[`TEXT_NOT_READY`] || UIText.STATUS_UNKNOWN;
+                    this.elements.statusText.textContent = label;
+                    if (appState.error) {
+                        this.elements.statusText.textContent += " | " + appState.error;
+                        this.elements.statusText.classList.add('error');
+                    } else {
+                        this.elements.statusText.classList.add('offline');
+                    }
+                    
                 }
                 break;
+            case AppStatus.INITIALIZING:
             case AppStatus.CONNECTING:
                 this.elements.statusText.textContent = '';
                 break;

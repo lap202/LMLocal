@@ -9,7 +9,7 @@ import { BaseStoreClass } from "@app/store/base.store.js";
 class AppStoreClass extends BaseStoreClass {
     constructor() {
         super({
-            status: AppStatus.OFFLINE,
+            status: AppStatus.INITIALIZING,
             tokenUsed: 0,
             tokenSpeed: 0,
             sessionId: null,
@@ -17,7 +17,8 @@ class AppStoreClass extends BaseStoreClass {
             accumulatedText: "",
             accumulatedThoughtText: "",
             userMessage: "",
-            toolCallId:"",
+            toolCallId: "",
+            toolWithError: false,
             toolMessage: "",
         });
     }

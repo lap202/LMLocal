@@ -29,6 +29,7 @@ namespace LMLocal.Infrastructure.WebView
         Task<bool> UpdateSettingsAsync(string newSettingsJson);
         Task<string> GetInstructionsAsync();
         Task<bool> UpdateInstructionsAsync(string newInstructionsJson);
+        Task<string> TestConnectionAsync(string payload);
     }
 
 
@@ -74,12 +75,7 @@ namespace LMLocal.Infrastructure.WebView
             {
                 using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(requestTimeout)))
                 {
-                    var response = await _modelsListService.ListModelsAsync(cts.Token).ConfigureAwait(false);
-                    if (response != null)
-                    {
-                        ApplyCurrentActiveModel(response, _activeModelContext.CurrentModelId);
-                    }
-
+                    var response = await _modelsListService.ListModelsAsync(_activeModelContext.CurrentModelId, cts.Token).ConfigureAwait(false);
                     return response == null ? "{}" : response.ToJson();
                 }
             }
@@ -87,22 +83,6 @@ namespace LMLocal.Infrastructure.WebView
             {
                 InternalLogger.Error("ListModelsAsync failed", ex);
                 return new { Error = "Failed to list models: " + ex.Message }.ToJson();
-            }
-        }
-
-        private void ApplyCurrentActiveModel(UnifiedListModelsResponse response, string currentModelId)
-        {
-            if (response?.Models == null || response.Models.Count == 0)
-                return;
-
-            if (string.IsNullOrEmpty((string)currentModelId))
-                return;
-
-            var currentModel = response.Models.FirstOrDefault(m => m.Id == currentModelId);
-            if (currentModel != null)
-            {
-                response.ActiveModel = currentModel;
-                response.HasActiveModel = true;
             }
         }
 
@@ -291,6 +271,37 @@ namespace LMLocal.Infrastructure.WebView
             {
                 InternalLogger.Error("UpdateInstructionsAsync failed", ex);
                 return false;
+            }
+        }
+
+        public async Task<string> TestConnectionAsync(string payload)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(payload))
+                    return new { success = false, error = "Invalid parameters" }.ToJson();
+
+                var request = payload.FromJson<TestConnectionRequest>();
+                if (request == null || string.IsNullOrWhiteSpace(request.Provider) || string.IsNullOrWhiteSpace(request.Url))
+                    return new { success = false, error = "Provider and URL are required" }.ToJson();
+
+                var requestTimeout = _settingsManager.RequestTimeoutSeconds;
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(requestTimeout)))
+                {
+                    bool success = await _modelsListService.TestConnectionAsync(
+                        request.Url, 
+                        request.Provider, 
+                        request.ApiKey ?? string.Empty, 
+                        cts.Token
+                    ).ConfigureAwait(false);
+
+                    return new { success, error = success ? (string)null : "Failed to connect" }.ToJson();
+                }
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Error("TestConnectionAsync failed", ex);
+                return new { success = false, error = ex.Message }.ToJson();
             }
         }
     }

@@ -19,8 +19,8 @@
             <button id="retry-btn" style="display:none;" title="Retry connection">↻</button>
 
         </div>
-        <div id="status-separator" > · </div>
-        <div class="model-info">
+        <div id="status-separator"> · </div>
+        <div class="model-info" id="model-info">
             <span id="model-name">Select model...</span>
         </div>
         <div class="menu-container">
@@ -69,7 +69,7 @@
             <textarea id="userInput" placeholder="Ask LMLocal..." rows="1" autofocus></textarea>
             <div class="input-footer">
                 <div class="input-footer-left">
-                    <div class="dropdown" id="actionDropdown"  style="display:none">
+                    <div class="dropdown" id="actionDropdown" style="display:none">
                         <button type="button" class="btn-action dropdown-trigger" title="AI instructions mode">
                             <span id="selectedOption">None</span>
                             <span class="arrow">▾</span>
@@ -101,16 +101,38 @@
         <div class="modal-body">
             <form id="settings-form">
                 <div class="settings-group">
+                    <label for="Provider" class="settings-label">AI Provider</label>
+                    <span class="settings-description">
+                        Select type of LLM server you want to use.
+                    </span>
+                    <select name="Provider" id="provider-select" data-setting="Provider" class="settings-select">
+                        <option value="lmstudio" selected>LM Studio (local)</option>
+                        <option value="ollama">Ollama (local)</option>
+                        <option value="jan">Jan (local)</option>
+                        <option value="openai">OpenAI compatible (custom)</option>
+                    </select>
+                </div>
+                <div class="settings-group">
                     <label for="LmStudioBaseUrl" class="settings-label">API base URL</label>
                     <span class="settings-description">
-                        Base URL of your local or remote LLM server (LM Studio, Ollama, or OpenAI-compatible API).
+                        Base URL of your local or remote LLM server.
                     </span>
-                    <input type="url" name="LmStudioBaseUrl" data-setting="LmStudioBaseUrl" placeholder="http://localhost:1234" required pattern="https?://.+">
+                    <div class="input-with-button">
+                        <input type="url" id="base-url-input" name="LmStudioBaseUrl" data-setting="LmStudioBaseUrl" placeholder="http://localhost:1234" required pattern="https?://.+">
+                        <button type="button" class="test-connection-btn btn-secondary" title="Test connection to the provider">
+                            <span class="btn-icon-slot">
+                                <svg class="btn-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6 11.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z" opacity="0.3" />
+                                    <path d="M11.5 2a.5.5 0 0 1 .5-.5v4a.5.5 0 0 1-1 0V3H8.5v3.293l1.854 1.853a.5.5 0 0 1-.708.708L8.5 7.707V14H7.5V7.707L6.354 8.854a.5.5 0 1 1-.708-.708L7.5 6.293V3H4.5v3.5a.5.5 0 0 1-1 0v-4a.5.5 0 0 1 .5-.5h8z" />
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
                 </div>
                 <div class="settings-group">
                     <label for="ApiKey" class="settings-label">API key</label>
                     <span class="settings-description">
-                        Your API key for authentication. Optional for most local servers (LM Studio, Ollama).
+                        Your API key for authentication. Optional for most local servers.
                     </span>
                     <div class="password-input-container">
                         <input type="password" name="ApiKey" data-setting="ApiKey" autocomplete="off">
@@ -143,7 +165,8 @@
                         <input type="checkbox" data-setting="EnableAiTools">
                         <span class="checkbox-content-wrapper">
                             <span class="checkbox-title">Enable AI Tools (beta)</span>
-                            <span class="checkbox-description">Allows the AI to see your open solution and read files for smarter, context‑aware help.
+                            <span class="checkbox-description">
+                                Allows the AI to see your open solution and read files for smarter, context‑aware help.
                                 <span style="display: block; margin-top: 6px; opacity: 0.6; font-size: 0.9em; font-style: italic;">
                                     Requires a model that supports function calling.
                                 </span>
@@ -225,8 +248,25 @@
 
     <dialog id="model-selector-dialog" class="model-modal">
         <div class="modal-header">
-            <span>Select active model</span>
-            <button id="model-refresh-top" class="ui-icon-btn" title="Refresh list">
+            <span>Select model</span>
+        </div>
+
+        <div class="modal-toolbar">
+            <div class="toolbar-left">
+                <input type="text" id="model-filter-input" placeholder="Search models..." autocomplete="off">
+
+                <button id="model-sort-btn" class="ui-icon-btn" title="Sort by Name">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4" /></svg>
+                </button>
+
+                <label class="model-filter-toggle" title="Show loaded models only">
+                    <input type="checkbox" id="model-active-only-toggle">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Loaded only</span>
+                </label>
+
+            </div>
+            <button id="model-refresh-btn" class="ui-icon-btn" title="Refresh list">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.53 2.3A6.995 6.995 0 0 0 8 1a7 7 0 1 0 7 7h-1.5a5.5 5.5 0 1 1-1.39-3.64l-1.24 1.24H15V1.47l-1.35 1.35z" /></svg>
             </button>
         </div>
@@ -244,7 +284,6 @@
             <button id="model-selector-close">Close</button>
         </div>
     </dialog>
-
 
     <script type="importmap">
         {

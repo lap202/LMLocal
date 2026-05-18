@@ -3,6 +3,7 @@ import { AppStatus } from '@app/store/app.status.js';
 import appStore from '@app/store/app.store.js';
 import modelStore from '@app/store/model.store.js'
 import { ChunkBuffer } from '@app/store/chunk.buffer.js';
+
 class BridgeMessageHandler {
     constructor() {
         this.contentBuffer = new ChunkBuffer(Config.STREAM_BUFFER_INTERVAL_MS);
@@ -135,6 +136,7 @@ class BridgeMessageHandler {
         appStore.setState({
             status: AppStatus.RESPONDING,
             toolCallId: toolCall.CallId,
+            toolWithError: toolCall.IsError,
             toolMessage: toolCall.IsError ? toolCall.Error : toolCall.Message
         });
     }

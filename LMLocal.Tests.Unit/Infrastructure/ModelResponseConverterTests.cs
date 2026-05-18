@@ -45,7 +45,7 @@ namespace LMLocal.Tests.Unit.Infrastructure
             var m = result.Models[0];
             Assert.That(m.Id, Is.EqualTo("inst1"));
             Assert.That(m.Name, Is.EqualTo("Model Name"));
-            Assert.That(m.IsActive, Is.True);
+            Assert.That(m.IsLoaded, Is.True);
             Assert.That(m.SupportsToolUse, Is.True);
             Assert.That(m.MaxTokens, Is.EqualTo(4096));
         }

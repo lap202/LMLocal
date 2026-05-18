@@ -64,6 +64,12 @@ class BridgeClient {
         const payload = JSON.stringify(instructions);
         return await this._callHost("UpdateInstructionsAsync", payload);
     }
+
+    async testConnection(details) {
+        const payload = JSON.stringify(details);
+        var result = await this._callHost("TestConnectionAsync", payload);
+        return JSON.parse(result);
+    }
 }
 
 const bridgeClient = new BridgeClient();

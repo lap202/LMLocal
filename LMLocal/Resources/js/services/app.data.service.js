@@ -98,6 +98,10 @@ class AppDataService {
             throw error;
         }
     }
+
+    async testConnection(details) {
+        return await bridgeClient.testConnection(details);
+    }
 }
 
 const appDataService = new AppDataService();
