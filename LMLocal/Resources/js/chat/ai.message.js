@@ -1,4 +1,4 @@
-﻿import { attachCopyButton } from '@app/chat/attach.copy.button.js';
+﻿import { wrapCodeBlocks, attachCopyButton } from '@app/chat/attach.copy.button.js';
 /**
  * Factory that creates an message DOM element, caches its internal blocks,
  * and returns an API to manipulate the message.
@@ -89,6 +89,11 @@ export function createAiMessage(container, highlightWorkerClient, streamingPipel
             return new Promise((resolve) => {
                 streamingPipeline.onEnd(async () => {
                     element?.classList.add('completed');
+
+                    if (responseContainer?.isConnected) {
+                        wrapCodeBlocks(responseContainer);
+                    }
+
                     try {
                         await highlightWorkerClient.highlightContainer(responseContainer);
                     } catch (err) {

@@ -1,6 +1,27 @@
 import { UIText, Assets } from '@app/store/app.globals.js';
 
 /**
+ * Wraps unprocessed `<pre>` blocks in `.code-block-container` divs.
+ * This creates the container structure needed by the highlight worker to add "View All" buttons
+ * and should be called before highlighting.
+ */
+export function wrapCodeBlocks(containerElem) {
+    if (!containerElem) return;
+    const preElements = containerElem.querySelectorAll('pre');
+    preElements.forEach(pre => {
+        if (pre.hasAttribute('data-code-wrapped')) return;
+        if (pre.closest('.code-block-container')) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-container';
+        if (!pre.parentNode) return;
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+        pre.setAttribute('data-code-wrapped', 'true');
+    });
+}
+
+/**
  * Scans `containerElem` for `<pre><code>` blocks and attaches a copy header to each unprocessed block.
  */
 export function attachCopyButton(containerElem) {
@@ -8,7 +29,10 @@ export function attachCopyButton(containerElem) {
     const preElements = containerElem.querySelectorAll('pre');
     preElements.forEach(pre => {
         if (pre.hasAttribute('data-copy-processed')) return;
-        if (pre.closest('.code-block-container')) return;
+        const container = pre.closest('.code-block-container');
+        if (!container) return;
+        if (container.querySelector('.code-header')) return;
+
         const codeElement = pre.querySelector('code');
         if (!codeElement) return;
 
@@ -23,8 +47,6 @@ export function attachCopyButton(containerElem) {
             lang = 'text';
         }
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'code-block-container';
         const header = document.createElement('div');
         header.className = 'code-header';
         header.innerHTML = `
@@ -33,9 +55,8 @@ export function attachCopyButton(containerElem) {
                 ${Assets.COPY_BUTTON_SVG}
                 <span>${UIText.COPY_LABEL}</span>
             </button>`;
-        if (!pre.parentNode) return;
-        pre.parentNode.insertBefore(wrapper, pre);
-        wrapper.append(header, pre);
+
+        container.insertBefore(header, pre);
         pre.setAttribute('data-copy-processed', 'true');
     });
 }

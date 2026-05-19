@@ -84,6 +84,54 @@ export class HighlightWorkerClient {
                     const errorInfo = res?.error;
                     console.warn('Highlighting failed for block:', block, errorInfo);
                 }
+
+                // If the code block exceeds 400px in height, restrict its max-height and add a "View All" button
+                if (block.scrollHeight > 400) {
+                    block.classList.add('restrictCodeBlockHeight');
+
+                    const container = block.closest('.code-block-container');
+                    if (!container) return;
+
+                    if (container.querySelector('.view-all-button')) return;
+
+                    const viewAllButton = document.createElement('button');
+                    viewAllButton.type = 'button';
+                    viewAllButton.textContent = 'View All';
+                    viewAllButton.className = 'view-all-button';
+                    viewAllButton.setAttribute('aria-expanded', 'false');
+
+                    // Generate a unique ID for accessibility if not already present
+                    if (!block.id) {
+                        block.id = `code-block-${Math.random().toString(36).slice(2, 9)}`;
+                    }
+                    viewAllButton.setAttribute('aria-controls', block.id);
+                    viewAllButton.setAttribute('aria-label', 'View all code');
+
+                    // Insert button after the <pre> element, inside the container
+                    const pre = block.parentElement;
+                    if (pre && pre.nextSibling) {
+                        pre.parentElement.insertBefore(viewAllButton, pre.nextSibling);
+                    } else if (pre) {
+                        pre.parentElement.appendChild(viewAllButton);
+                    } else {
+                        container.appendChild(viewAllButton);
+                    }
+
+                    let expanded = false;
+
+                    viewAllButton.addEventListener('click', () => {
+                        expanded = !expanded;
+                        viewAllButton.setAttribute('aria-expanded', String(expanded));
+
+                        if (expanded) {
+                            block.classList.remove('restrictCodeBlockHeight');
+                            viewAllButton.textContent = 'Collapse';
+                        } else {
+                            block.classList.add('restrictCodeBlockHeight');
+                            viewAllButton.textContent = 'View All';
+                        }
+                    });
+                }
             });
             resolve();
         } catch (err) {

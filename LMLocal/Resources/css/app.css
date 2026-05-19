@@ -371,6 +371,33 @@ body {
         color: var(--success-color) !important;
     }
 
+/* Code block height restriction and expansion */
+.restrictCodeBlockHeight {
+    max-height: 400px;
+    overflow: auto;
+}
+
+/* "View All" button for expanding tall code blocks */
+.view-all-button {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0;
+    background: var(--code-header-bg);
+    color: var(--muted-color);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: background 0.2s;
+}
+
+    .view-all-button:hover {
+        background: var(--input-bg);
+    }
+
 pre {
     padding: 6px !important;
     margin: 6px !important;
